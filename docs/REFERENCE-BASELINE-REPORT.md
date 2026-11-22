@@ -1,6 +1,6 @@
 # Agent Gauntlet reference baseline: 22 November 2026
 
-<badge>Verified CI baseline</badge>
+**Verified CI baseline**
 
 The standard deterministic reference matrix completed successfully on 22 November 2026. The tested revision was `d846955507118b9628cd7ad8b593ffd9e97db22f`, subsequently merged to `main` as `a559af73b11bd4d5419d5eb1495c532761df7b04` through PR #16.
 
@@ -16,7 +16,7 @@ The standard deterministic reference matrix completed successfully on 22 Novembe
 | Execution failures | 0 |
 | CI Python versions | 3.11, 3.12, 3.13 |
 
-The complete machine-readable report is [reference-baseline-2026-11-22.json](../benchmarks/reference-baseline-2026-11-22.json).
+The machine-readable release summary is [reference-baseline-2026-11-22.json](../benchmarks/reference-baseline-2026-11-22.json), validated by [release-baseline-report.schema.json](../schemas/release-baseline-report.schema.json). The original CI-generated baseline index and all evidence bundles are preserved in the linked workflow artifact.
 
 ## Calibration outcomes
 
@@ -36,7 +36,7 @@ The successful CI run is [Agent Gauntlet CI, run 45053558139](https://github.com
 - Baseline index SHA-256: `a3ede77ae332e90b30c6245f05bf3856bf4a7e62825726214086b0104876edb6`
 - Artifact retention expiry: 20 February 2027
 
-The CI workflow ran the full test suite on Python 3.11, 3.12, and 3.13. The Python 3.11 leg also generated the 25-seed matrix and independently verified every evidence bundle and the baseline index before upload.
+The CI workflow ran the full test suite on Python 3.11, 3.12, and 3.13. The Python 3.11 leg also generated the 25-seed matrix and independently verified every evidence bundle and the baseline index before upload. During this audit, the downloaded archive SHA-256 was recomputed against GitHub's artifact digest, the embedded baseline index SHA-256 was independently recomputed, and all 14 bundle directories were confirmed present.
 
 ## Release checkpoint
 
