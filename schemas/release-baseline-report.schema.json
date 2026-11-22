@@ -1,0 +1,296 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://huffmanmainnode.github.io/Agent-Gauntlet/schemas/release-baseline-report.schema.json",
+  "title": "Agent Gauntlet Release Baseline Summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "generated_at",
+    "baseline",
+    "source",
+    "ci",
+    "artifact",
+    "verification",
+    "profiles",
+    "interpretation",
+    "limitations"
+  ],
+  "properties": {
+    "format": {
+      "const": "agent-gauntlet-release-baseline-report-v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "seed_count",
+        "seed_values",
+        "profile_count",
+        "suite_run_count",
+        "case_count",
+        "verified_evidence_bundles",
+        "all_bundles_verified",
+        "baseline_sha256"
+      ],
+      "properties": {
+        "format": {
+          "const": "agent-gauntlet-reference-baseline-v1"
+        },
+        "seed_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "seed_values": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer"
+          }
+        },
+        "profile_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "suite_run_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "case_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "verified_evidence_bundles": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "all_bundles_verified": {
+          "const": true
+        },
+        "baseline_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "tested_commit",
+        "merged_main_commit",
+        "pull_request"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string"
+        },
+        "tested_commit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "merged_main_commit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "pull_request": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "ci": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workflow",
+        "run_id",
+        "run_url",
+        "conclusion",
+        "python_matrix",
+        "test_suite",
+        "reference_matrix"
+      ],
+      "properties": {
+        "workflow": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "integer"
+        },
+        "run_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "conclusion": {
+          "const": "success"
+        },
+        "python_matrix": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "string"
+          }
+        },
+        "test_suite": {
+          "type": "string"
+        },
+        "reference_matrix": {
+          "type": "string"
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "artifact_id",
+        "sha256",
+        "retention_days",
+        "expires_at",
+        "download_url"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "artifact_id": {
+          "type": "integer"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "retention_days": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "download_url": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_digest_recomputed",
+        "baseline_index_digest_recomputed",
+        "evidence_bundle_count",
+        "all_evidence_bundles_verified_by_ci"
+      ],
+      "properties": {
+        "artifact_digest_recomputed": {
+          "const": true
+        },
+        "baseline_index_digest_recomputed": {
+          "const": true
+        },
+        "evidence_bundle_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "all_evidence_bundles_verified_by_ci": {
+          "const": true
+        }
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "profile",
+          "cases_per_suite",
+          "suite_results"
+        ],
+        "properties": {
+          "profile": {
+            "enum": [
+              "demo-good",
+              "demo-bad",
+              "demo-vulnerable-injection",
+              "demo-stale-state"
+            ]
+          },
+          "cases_per_suite": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "suite_results": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "suite",
+                "cases",
+                "behavior_pass_rate",
+                "mean_score",
+                "execution_failures"
+              ],
+              "properties": {
+                "suite": {
+                  "enum": [
+                    "hallucination",
+                    "contradiction",
+                    "injection",
+                    "variable",
+                    "ambiguity",
+                    "stateful"
+                  ]
+                },
+                "cases": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "behavior_pass_rate": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "mean_score": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "execution_failures": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "interpretation": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
