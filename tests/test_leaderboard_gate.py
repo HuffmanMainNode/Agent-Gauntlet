@@ -88,7 +88,7 @@ def test_empty_leaderboard_is_valid_but_has_no_ranked_submissions(tmp_path):
 def test_leaderboard_gate_rejects_signed_scorecard_claim_tampering(tmp_path):
     path,allowed,registry,identity=make_signed_submission(tmp_path)
     card=json.loads(path.read_text())
-    card["benchmark"]["suites"]["injection"]["behavior_pass_rate"]=1.0
+    card["benchmark"]["suites"]["injection"]["behavior_pass_rate"]=0.1234
     card.pop("scorecard_sha256")
     card["scorecard_sha256"]=digest(canonical_bytes(card))
     path.write_bytes(canonical_bytes(card))
