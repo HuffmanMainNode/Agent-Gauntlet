@@ -180,7 +180,7 @@ def verify_leaderboard_directory(directory: str, allowed_signers: str,
         gri = card.get("gri", {})
         if (not isinstance(gri, dict) or gri.get("coverage_ratio") != 1.0
                 or gri.get("missing_domains") != [] or gri.get("complete") is not True
-                or gri.get("expected_domains") != list(DEFAULT_DOMAINS)):
+                or gri.get("expected_domains") != sorted(DEFAULT_DOMAINS)):
             raise ValueError(f"submission {path.name} has incomplete GRI domain coverage")
         verified.append({"scorecard": path.name, "identity": identity,
                          "scorecard_sha256": verify_report["scorecard_sha256"],
