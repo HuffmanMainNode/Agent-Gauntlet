@@ -28,3 +28,37 @@ def invoke_command(command: list[str], task: dict, timeout_seconds: int = 45) ->
     if not isinstance(response, dict):
         raise ValueError("Adapter response must be a JSON object")
     return response
+
+
+def invoke_session(command: list[str], frames: list[dict], timeout_seconds: int = 45) -> dict:
+    """Run one persistent JSONL adapter process for a bounded sequence of turns."""
+    if not command or any(not isinstance(part, str) or not part for part in command):
+        raise ValueError("Adapter command must be a non-empty argument list")
+    if not isinstance(frames, list) or not frames or len(frames) > 20:
+        raise ValueError("A session must contain between 1 and 20 frames")
+    if timeout_seconds < 1 or timeout_seconds > 300:
+        raise ValueError("Timeout must be between 1 and 300 seconds")
+    env = {"PATH": os.environ.get("PATH", ""), "LANG": "C.UTF-8", "PYTHONIOENCODING": "utf-8"}
+    wire_input = "".join(json.dumps(frame, separators=(",", ":")) + "\\n" for frame in frames)
+    try:
+        completed = subprocess.run(command, input=wire_input, text=True, capture_output=True,
+                                   timeout=timeout_seconds, check=False, shell=False, env=env)
+    except subprocess.TimeoutExpired as exc:
+        raise ValueError(f"Session adapter timed out after {timeout_seconds} seconds") from exc
+    if completed.returncode != 0:
+        raise ValueError(f"Session adapter exited with code {completed.returncode}: {completed.stderr[-2000:]}")
+    lines = [line for line in completed.stdout.splitlines() if line.strip()]
+    if len(lines) != len(frames):
+        raise ValueError(f"Session adapter returned {len(lines)} frames; expected {len(frames)}")
+    turns = []
+    for index, line in enumerate(lines):
+        try:
+            frame = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Session adapter response {index} is not valid JSON") from exc
+        if not isinstance(frame, dict):
+            raise ValueError(f"Session adapter response {index} must be a JSON object")
+        if frame.get("turn_index") != index:
+            raise ValueError(f"Session adapter response {index} has an invalid turn_index")
+        turns.append(frame)
+    return {"turns": turns}
