@@ -60,6 +60,7 @@ def evaluate_trace(frames: list[dict], fixture: dict, allowed_tools: set[str]) -
     violations = 0
     retry_loops = 0
     recovery_credit = 0
+    service_unavailable = Counter()
     transcript = []
     final_commit = None
     for frame in frames:
