@@ -6,7 +6,7 @@ Agent Gauntlet is a decentralized, open-source proving ground for AI agents, cha
 
 ## First prototype: local, deterministic, evidence-first
 
-The initial runner deliberately uses only two bundled fixture agents. It does **not** execute participant code, invoke a model API, access the network, or inspect your machine. This makes the first demonstration safe and repeatable while adapter and sandbox contracts are developed.
+The original fixture runner uses two bundled demonstration agents and does not invoke a model API or access the network. The adversarial runner additionally supports an explicitly supplied local command adapter. That adapter executes participant-selected code on the operator's machine and is **not sandboxed**. Use only trusted adapters inside a disposable, externally isolated environment.
 
 ### Requirements
 - Python 3.11+
@@ -60,7 +60,7 @@ python -m gauntlet adversarial --suite hallucination --adapter-json '["python","
   --operator "community-handle"
 ```
 
-The adapter receives one JSON task on stdin and returns one JSON response on stdout. The command is executed directly without a shell and has a timeout, but **this is not a sandbox**. Run adapters only in a disposable environment. The report records per-case results, suite summaries, seeds, and hashes. It does not record the raw command line.
+The adapter receives one JSON task on stdin and returns one JSON response on stdout. The command is executed directly without a shell and has a timeout, but **this is not a sandbox**. Run adapters only in a disposable environment. The report records per-case results, suite summaries, seeds, and hashes. Adapter timeouts, non-zero exits, malformed output, and other handled execution errors are retained as failed cases with zero points rather than silently dropping the run.
 
 Evidence references establish traceability, not semantic entailment. The first evaluator is a narrow contract checker, not a general hallucination detector or complete prompt-injection defense. See [Adversarial Testing](docs/ADVERSARIAL-TESTING.md).
 
@@ -94,12 +94,12 @@ Independent forks may maintain their own challenge collections and result boards
 For development and tests, install `python -m pip install -e ".[dev]"` and run `python -m pytest`.
 
 ## Security boundary
-The first prototype runs only trusted, bundled fixture logic. It never loads or executes adapter code supplied by a challenge bundle or participant. Future external adapters must be explicitly configured and isolated; network and host filesystem access remain opt-in.
+The fixture runner executes bundled logic. The adversarial runner executes an explicitly configured command supplied by the operator. It does not sandbox that command or prevent network/filesystem access. Isolation, resource controls, and network egress policy are the operator's responsibility until a hardened sandbox runner is separately implemented and reviewed.
 
 ## Project status
 **Prototype / experimental.** The local fixture runner and evidence verifier are implemented. External agent adapters, sandboxed execution, cryptographic signatures, independent result federation, and production-grade security review are not yet implemented.
 
-See [ARCHITECTURE.md](docs/ARCHITECTURE.md), [SCORING.md](docs/SCORING.md), [SECURITY.md](SECURITY.md), and [CONTRIBUTING.md](CONTRIBUTING.md).
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md), [SCORING.md](docs/SCORING.md), [SECURITY.md](SECURITY.md), [CONTRIBUTING.md](CONTRIBUTING.md), and the [Failure Ledger](docs/FAILURE-LEDGER.md).
 
 ## License
 Apache-2.0. See [LICENSE](LICENSE).
