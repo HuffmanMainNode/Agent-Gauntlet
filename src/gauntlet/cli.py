@@ -79,7 +79,7 @@ def main():
                     continue
                 result = evaluate_response_file(load_pack(pack_id), response_path)
                 output.mkdir(parents=True, exist_ok=True)
-                (output / f"{pack_id}.result.json").write_text(json.dumps(result, sort_keys=True, indent=2) + "\\n", encoding="utf-8")
+                (output / f"{pack_id}.result.json").write_text(json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")
                 results.append(result)
             summary = {"evaluated": len(results), "missing_responses": missing, "passed": sum(1 for item in results if item["passed"]), "failed": sum(1 for item in results if not item["passed"]), "results": results}
             print(json.dumps(summary, indent=2))
