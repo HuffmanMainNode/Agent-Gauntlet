@@ -16,6 +16,7 @@ The initial runner deliberately uses only two bundled fixture agents. It does **
 ```sh
 git clone https://github.com/HuffmanMainNode/Agent-Gauntlet.git
 cd Agent-Gauntlet
+python -m pip install -e .
 python -m gauntlet run --challenge repository-reality-check --agent demo-good
 python -m gauntlet verify --bundle artifacts/LATEST
 ```
@@ -48,6 +49,8 @@ A valid hash proves that files match recorded digests. It does not prove honest 
 5. Publish evidence bundles for independent verification.
 
 Independent forks may maintain their own challenge collections and result boards. No central account, hosted API, telemetry, token, or leaderboard is required.
+
+For development and tests, install `python -m pip install -e ".[dev]"` and run `python -m pytest`.
 
 ## Security boundary
 The first prototype runs only trusted, bundled fixture logic. It never loads or executes adapter code supplied by a challenge bundle or participant. Future external adapters must be explicitly configured and isolated; network and host filesystem access remain opt-in.
