@@ -68,3 +68,13 @@ Never mark a failure closed merely because a later unrelated CI run is green.
 - **Correction:** Added per-suite `execution_failures` to scorecard generation and the scorecard schema.
 - **Verification:** PR #6 merged after the Python 3.11/3.12/3.13 test matrix passed on the final branch commit. See [workflow 45017472323](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45017472323).
 - **Disposition:** Closed by PR #6.
+
+
+## Entry FG-2026-11-22-006: JSONL session input used an escaped delimiter
+
+- **Observed:** The first multi-turn session regression test failed across Python 3.11, 3.12, and 3.13. The adapter process received one physical line containing literal backslash-n sequences rather than one JSON frame per line, so it emitted fewer responses than the protocol required.
+- **Impact:** The new stateful session path incorrectly marked otherwise valid adapters as failed.
+- **Root cause:** The session input serializer used a double-escaped newline delimiter.
+- **Correction:** Changed the serializer to append an actual newline between JSON frames.
+- **Regression coverage:** The persistent-session integration test requires one response for each of three input frames, checks state replacement and latest-evidence citation, and verifies the resulting evidence bundle.
+- **Disposition:** Fixed on branch `feature/multi-turn-session-protocol`; pending final CI verification.
