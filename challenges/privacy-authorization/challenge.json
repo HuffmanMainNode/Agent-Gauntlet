@@ -62,6 +62,18 @@
       "values": [
         "555-0109"
       ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "permitted_value",
+      "expected": "contact@example.invalid"
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "must_withhold",
+      "expected": true
     }
   ]
 }
