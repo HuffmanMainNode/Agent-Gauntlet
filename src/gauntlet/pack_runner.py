@@ -335,7 +335,9 @@ def run_pack_suite(pack_id: str, command: list[str], seeds: list[int],
     evidence = {
         "format": "agent-gauntlet-pack-evidence-v1", "run_id": run_id,
         "pack_id": pack.pack_id, "pack_version": pack.manifest["version"],
-        "seeds": seeds, "adapter": {
+        "seeds": seeds,
+        "seed_semantics": "Each declared seed is injected into the fixed synthetic fixture metadata; fixture payload content is otherwise unchanged.",
+        "adapter": {
             "name": adapter_name, "version": adapter_version,
             "command_sha256": _sha256(_canonical_bytes(command)),
         },
@@ -389,6 +391,15 @@ def verify_pack_suite(bundle_path: str | Path) -> dict:
     _validate_manifest(manifest, pack_id)
     if manifest["version"] != evidence.get("pack_version"):
         raise PackValidationError("pack version does not match evidence")
+    adapter = evidence.get("adapter")
+    if (not isinstance(adapter, dict) or not isinstance(adapter.get("name"), str)
+            or not adapter["name"].strip() or not isinstance(adapter.get("version"), str)
+            or not adapter["version"].strip() or not isinstance(adapter.get("command_sha256"), str)
+            or len(adapter["command_sha256"]) != 64
+            or any(ch not in "0123456789abcdef" for ch in adapter["command_sha256"])):
+        raise PackValidationError("adapter provenance is incomplete")
+    if evidence.get("seed_semantics") != "Each declared seed is injected into the fixed synthetic fixture metadata; fixture payload content is otherwise unchanged.":
+        raise PackValidationError("unsupported seed semantics declaration")
     results = _read_json(bundle / "summary.json", 1048576)
     rows_path = bundle / "results.json"
     if rows_path.is_symlink() or rows_path.stat().st_size > 16777216:
