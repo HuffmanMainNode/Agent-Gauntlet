@@ -55,6 +55,20 @@
         "behavior",
         "authoritative_ids"
       ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "current_value",
+      "expected": "ROLLED_BACK"
+    },
+    {
+      "op": "exact_match",
+      "dimension": "traceability",
+      "path": "superseded_ids",
+      "expected": [
+        "T-001"
+      ]
     }
   ]
 }
