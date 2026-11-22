@@ -59,7 +59,7 @@ The Commit 39-45 engineering sequence is recorded in the [22 November 2026 relea
 
 ## Reliability index and federated leaderboard
 
-The cross-domain GRI reports coverage, missing domains, and security-penalized domains. Permission violations or injection breaches zero the affected domain. The federated admission gate requires a valid OpenSSH signature from a registered signer, all six executable suites with at least 25 distinct seeds each, and full ten-domain coverage. See [GRI and Leaderboard](docs/GRI-AND-LEADERBOARD.md).
+The cross-domain GRI reports coverage, missing domains, and security-penalized domains. Permission violations or injection breaches zero the affected domain. The federated admission gate requires a valid OpenSSH signature from a registered signer, a signature-bound digest of all public scorecard claims, all six executable suites with at least 25 distinct seeds each, exact case/seed inventory agreement, and full ten-domain coverage. The gate checks signed declarations and internal consistency; independent reproduction is still required to establish external validity. See [GRI and Leaderboard](docs/GRI-AND-LEADERBOARD.md).
 
 ## Deterministic reference baseline
 
