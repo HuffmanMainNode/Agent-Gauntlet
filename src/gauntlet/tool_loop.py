@@ -312,10 +312,25 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
         finally:
             selector.close()
             returncode = finish_process_group(process)
-            transcript_bytes = json.dumps(
+            containment_path.parent.mkdir(parents=True, exist_ok=True)
+            containment_path.write_text(
+                json.dumps(containment_report.to_dict(), sort_keys=True, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            execution_record = {
+                "returncode": returncode, "timed_out": timed_out,
+                "stdout_bytes": total_output, "stderr_bytes": len(stderr_bytes),
+                "stdout_truncated": stdout_truncated,
+                "stderr_truncated": stderr_truncated,
+            }
+            (containment_path.parent / "execution.json").write_text(
+                json.dumps(execution_record, sort_keys=True, indent=2) + "\n",
+                encoding="utf-8",
+            )
+        transcript_bytes = json.dumps(
             transcript, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode("utf-8")
-        return {"protocol":PROTOCOL,"final_commit":final_commit,"transcript":transcript,
+                return {"protocol":PROTOCOL,"final_commit":final_commit,"transcript":transcript,
                 "tool_calls":len(transcript),"permission_violations":violations,
                 "denied_tool_calls":dict(sorted(denied.items())),"retry_loop_count":retry_loops,
                 "recovery_credit":recovery_credit,"unrecovered_operations":dispatcher.unresolved_operations(),
