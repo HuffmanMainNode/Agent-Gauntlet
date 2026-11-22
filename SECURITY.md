@@ -5,15 +5,15 @@
 Agent Gauntlet has two distinct execution paths:
 
 - The fixture runner uses bundled demonstration agents and does not invoke an external model or participant command.
-- The adversarial runner executes an operator-configured command adapter on the operator's machine using `subprocess.run`, without a shell, with a timeout, and with a minimal environment. It starts a separate process for each seed. This is **not a sandbox**. The adapter can access resources available to its operating-system identity, including files and network access, subject to the host environment.
+- The adversarial runner executes an operator-configured command adapter through the POSIX containment helper. It starts a separate process for each seed, uses `shell=False`, a scrubbed environment, a temporary working directory, process-group cleanup, bounded stdout/stderr capture, wall-clock timeouts, and configured POSIX resource limits. Best-effort mode attempts Linux user/network/PID namespaces when the host capability probe succeeds; strict mode fails closed if that probe fails. The interactive tool-loop has resource limits and strict namespace enforcement, but its best-effort namespace behavior is not yet unified with the single-turn supervisor. These controls are defense-in-depth, **not a filesystem sandbox**. The adapter can still access host files available to its operating-system identity; network isolation depends on whether namespaces are active.
 
-Do not run untrusted adapters on a workstation, CI runner, or host containing credentials, private repositories, personal data, or production access. Use a disposable environment with no secrets, restricted filesystem mounts, restricted network egress, and strict resource limits. These controls must be configured outside Agent Gauntlet today. Process groups, resource limits, and namespace isolation may be added as defense-in-depth controls, but must not be represented as a secure boundary against hostile code without a separately reviewed isolation design.
+Do not run untrusted adapters on a workstation, CI runner, or host containing credentials, private repositories, personal data, or production access. Use a disposable VM or independently configured OS sandbox with no secrets, restricted filesystem mounts, restricted network egress, and strict resource limits. Agent Gauntlet's temporary directory is only a working directory; it does not restrict filesystem visibility. Process groups, resource limits, and namespaces are defense-in-depth controls, not a secure boundary against hostile code without a separately reviewed isolation design.
 
 The bundled Python fixture contains an intentionally unsafe `eval` example. It is data for inspection only and must never be executed.
 
 ## Evidence limitations
 
-SHA-256 artifact digests detect accidental or later content changes relative to the manifest. The manifests are unsigned. A submitter can create a new internally consistent bundle; hashes do not authenticate the model, operator, runtime, or honesty of execution. The verifier recomputes deterministic cases and scoring, but it cannot establish semantic truth or independently observe an external model.
+SHA-256 artifact digests detect content changes relative to the manifest. Evidence bundles are unsigned by default. Public scorecards can carry detached OpenSSH signatures that bind the provenance root, pack-result hashes, and a canonical digest of all public scorecard claims. A signature authenticates the key holder's signed declaration only; it does not authenticate the agent, model provider, runtime, operator's honesty, or semantic truth. The local leaderboard gate verifies the signature and internal consistency but does not fetch external evidence archives or independently replay remote adapter runs.
 
 ## Reporting
 
@@ -21,4 +21,4 @@ Do not publish secrets or exploit details in public issues. Use GitHub private v
 
 ## Future execution backend
 
-A hardened sandbox is a separate security project requiring a threat model, isolation architecture, resource limits, network egress policy, permission model, escape testing, and independent review. Containers alone are not treated as a complete isolation boundary.
+A hardened filesystem/process sandbox remains a separate security project requiring a threat model, isolation architecture, mount or pivot-root controls, network egress policy, permission model, escape testing, and independent review. Containers alone are not treated as a complete isolation boundary.
