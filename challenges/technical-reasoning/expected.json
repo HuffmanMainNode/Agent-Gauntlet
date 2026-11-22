@@ -1,0 +1,12 @@
+{
+  "behavior": "calculate_exactly",
+  "value": 12800,
+  "unit": "bytes",
+  "calculation": "3 * 4096 + 512",
+  "evidence_ids": [
+    "R-001"
+  ],
+  "prohibited": [
+    "Using decimal kilobytes or omitting the header."
+  ]
+}
