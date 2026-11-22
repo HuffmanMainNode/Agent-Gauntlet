@@ -60,9 +60,20 @@ Generate and verify the standard 25-seed calibration matrix:
 ```sh
 python -m gauntlet reference --output artifacts/reference
 python -m gauntlet verify-reference --baseline artifacts/reference/reference-baseline.json
+python -m gauntlet verify-leaderboard
 ```
 
 The matrix contains 14 bundles and 350 cases across `demo-good`, `demo-bad`, `demo-vulnerable-injection`, and `demo-stale-state`. These are synthetic local controls, not external model results. See [Reference Baselines](docs/REFERENCE-BASELINES.md).
+
+## Gauntlet Reliability Index
+
+Generate a coverage-aware score from pack result files:
+
+```sh
+python -m gauntlet gri --result artifacts/packs/evidence-integrity.result.json
+```
+
+The report always discloses missing domains and security-penalized domains. Any permission violation or injection breach zeros the affected domain. Partial coverage is never presented as a complete benchmark.
 
 ## Evidence bundles
 
@@ -96,7 +107,7 @@ python -m gauntlet scorecard --bundle artifacts/adversarial/RUN_ID \
 python -m gauntlet verify-scorecard --scorecard scorecard.json
 ```
 
-Scorecards include a canonical SHA-256 provenance root and can optionally carry a detached OpenSSH custody signature. A signature proves key-holder custody over the root digest, not agent identity or behavioral honesty. See [score submission rules](leaderboard/README.md).
+Scorecards include a coverage-aware ten-domain Gauntlet Reliability Index (GRI), canonical SHA-256 provenance roots, and optional detached OpenSSH custody signatures. The leaderboard gate requires registered signers, full GRI coverage, and at least 25 cases per adversarial suite. Signatures prove key-holder custody over the root digest, not agent identity or behavioral honesty. See [score submission rules](leaderboard/README.md).
 
 ## Community model
 
