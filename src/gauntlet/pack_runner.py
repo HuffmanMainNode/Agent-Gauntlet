@@ -362,12 +362,15 @@ def verify_pack_suite(bundle_path: str | Path) -> dict:
     for name, expected in inventory.items():
         if not isinstance(name, str) or Path(name).is_absolute() or ".." in Path(name).parts:
             raise PackValidationError("unsafe evidence artifact path")
-        candidate = (bundle / name).resolve()
+        raw_candidate = bundle / name
+        if any(parent.is_symlink() for parent in [raw_candidate, *raw_candidate.parents] if parent != bundle.parent):
+            raise PackValidationError("symlinks are not accepted in evidence bundles")
+        candidate = raw_candidate.resolve()
         try:
             candidate.relative_to(bundle)
         except ValueError as exc:
             raise PackValidationError("evidence artifact escapes bundle") from exc
-        if not candidate.is_file() or candidate.is_symlink():
+        if not candidate.is_file():
             raise PackValidationError(f"missing or unsafe evidence artifact: {name}")
         if _sha256(candidate.read_bytes()) != expected:
             raise PackValidationError(f"evidence digest mismatch: {name}")
@@ -379,7 +382,9 @@ def verify_pack_suite(bundle_path: str | Path) -> dict:
         raise PackValidationError("pack version does not match evidence")
     results = _read_json(bundle / "summary.json", 1048576)
     rows_path = bundle / "results.json"
-    rows = json.loads(rows_path.read_text(encoding="utf-8"))
+    if rows_path.is_symlink() or rows_path.stat().st_size > 16777216:
+        raise PackValidationError("results file is unsafe or oversized")
+    rows = json.loads(rows_path.read_text(encoding="utf-8"), object_pairs_hook=_unique_object, parse_constant=_reject_constant)
     seeds = evidence.get("seeds")
     if (not isinstance(seeds, list) or not seeds or len(seeds) > 100
             or any(type(seed) is not int or seed < 0 for seed in seeds)
@@ -392,7 +397,10 @@ def verify_pack_suite(bundle_path: str | Path) -> dict:
         fixture_path = row.get("fixture_path")
         if not isinstance(fixture_path, str) or Path(fixture_path).is_absolute() or ".." in Path(fixture_path).parts:
             raise PackValidationError("unsafe fixture path in result row")
-        fixture_file = (bundle / fixture_path).resolve()
+        raw_fixture_file = bundle / fixture_path
+        if raw_fixture_file.is_symlink():
+            raise PackValidationError("fixture symlinks are not accepted")
+        fixture_file = raw_fixture_file.resolve()
         try:
             fixture_file.relative_to(bundle)
         except ValueError as exc:
@@ -400,8 +408,10 @@ def verify_pack_suite(bundle_path: str | Path) -> dict:
         fixture = _read_json(fixture_file, 1048576)
         if _sha256(_canonical_bytes(fixture)) != row.get("fixture_sha256"):
             raise PackValidationError("fixture digest mismatch")
-        if fixture.get("challenge_id") != pack_id or fixture.get("seed") != row["seed"]:
-            raise PackValidationError("fixture identity or seed mismatch")
+        if (fixture.get("challenge_id") != pack_id or fixture.get("seed") != row["seed"]
+                or fixture.get("classification") != "synthetic"
+                or fixture.get("environment") != {"network": "disabled", "filesystem": "fixture-only", "submission_execution": "disabled"}):
+            raise PackValidationError("fixture identity, seed, or safety classification mismatch")
         if row.get("status") == "failed":
             if not isinstance(row.get("error_type"), str) or not isinstance(row.get("error"), str):
                 raise PackValidationError("failed execution record is incomplete")
@@ -428,8 +438,18 @@ def verify_pack_suite(bundle_path: str | Path) -> dict:
         })
         if recomputed != row.get("evaluation"):
             raise PackValidationError("recorded pack evaluation does not match deterministic recomputation")
-    if results.get("pack_id") != pack_id or results.get("seeds") != seeds:
-        raise PackValidationError("summary identity or seed inventory mismatch")
+    expected_summary = {
+        "pack_id": pack_id, "pack_version": manifest["version"], "seeds": seeds,
+        "completed": sum(row.get("status") == "completed" for row in rows),
+        "execution_failures": sum(row.get("status") == "failed" for row in rows),
+        "passed": sum(row.get("evaluation", {}).get("passed") is True for row in rows),
+        "failed_assertions_or_policy": sum(
+            row.get("status") == "completed" and row.get("evaluation", {}).get("passed") is False
+            for row in rows
+        ),
+    }
+    if results != expected_summary:
+        raise PackValidationError("summary does not match recorded seed results")
     return {
         "valid": True, "run_id": evidence.get("run_id"), "pack_id": pack_id,
         "checked_artifacts": sorted(checked), "seeds": seeds,
