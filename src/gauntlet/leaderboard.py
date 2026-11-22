@@ -53,7 +53,7 @@ def build_scorecard(bundle_paths: list[str], agent_name: str, model_id: str,
             "conflict_reports": sum(bool(x["conflict_reported"]) for x in evaluations),
         }
         evidence_refs.append({
-            "suite": suite, "run_id": evidence["run_id"],
+            "suite": suite, "run_id": evidence["run_id"], "seeds": evidence.get("seeds", []),
             "evidence_sha256": digest((path / "evidence.json").read_bytes()),
             "results_sha256": digest((path / "results.json").read_bytes()),
             "verified_artifacts": verified["checked_artifacts"],
@@ -178,9 +178,23 @@ def verify_leaderboard_directory(directory: str, allowed_signers: str,
         suites = benchmark.get("suites", {}) if isinstance(benchmark, dict) else {}
         if not isinstance(suites, dict) or set(REQUIRED_LEADERBOARD_SUITES) - suites.keys():
             raise ValueError(f"submission {path.name} does not cover all required suites")
-        if any(not isinstance(suites[name], dict) or type(suites[name].get("cases")) is not int
-               or suites[name]["cases"] < minimum_seeds for name in REQUIRED_LEADERBOARD_SUITES):
-            raise ValueError(f"submission {path.name} has fewer than {minimum_seeds} seeds in a required suite")
+        evidence_refs = card.get("evidence", [])
+        if not isinstance(evidence_refs, list):
+            raise ValueError(f"submission {path.name} has malformed evidence references")
+        seeds_by_suite = {}
+        for reference in evidence_refs:
+            if not isinstance(reference, dict) or reference.get("suite") in seeds_by_suite:
+                raise ValueError(f"submission {path.name} has duplicate or malformed suite evidence")
+            seeds = reference.get("seeds")
+            if (not isinstance(seeds, list) or any(type(seed) is not int for seed in seeds)
+                    or len(seeds) != len(set(seeds))):
+                raise ValueError(f"submission {path.name} has invalid seed inventory")
+            seeds_by_suite[reference["suite"]] = seeds
+        for name in REQUIRED_LEADERBOARD_SUITES:
+            if (not isinstance(suites[name], dict) or type(suites[name].get("cases")) is not int
+                    or suites[name]["cases"] < minimum_seeds
+                    or len(seeds_by_suite.get(name, [])) < minimum_seeds):
+                raise ValueError(f"submission {path.name} has fewer than {minimum_seeds} unique seeds in a required suite")
         gri = card.get("gri", {})
         if (not isinstance(gri, dict) or gri.get("coverage_ratio") != 1.0
                 or gri.get("missing_domains") != [] or gri.get("complete") is not True
