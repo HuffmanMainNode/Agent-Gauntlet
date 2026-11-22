@@ -146,3 +146,27 @@ See [Architecture](docs/ARCHITECTURE.md), [Scoring](docs/SCORING.md), [Security]
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
+
+
+## Run a local pack across declared seeds
+
+The `pack-run` command executes an explicitly supplied, trusted local adapter through the interactive `tool-loop-v1` protocol, evaluates each final commit, and writes a verifiable evidence bundle:
+
+```sh
+python -m gauntlet pack-run --name technical-reasoning \
+  --adapter-json '["python","agent.py"]' \
+  --seeds 1,2,3,4,5 \
+  --adapter-name "Example Agent" \
+  --adapter-version "git:abc123" \
+  --operator "community-handle"
+```
+
+Verify the resulting bundle:
+
+```sh
+python -m gauntlet verify-pack-run --bundle artifacts/pack-runs/RUN_ID
+```
+
+Each seed gets a separate fixture copy, transcript digest, final response, assertion report, containment report, and execution record. Failed attempts are retained rather than silently dropped. The adapter command itself is represented by a SHA-256 digest in the evidence manifest; retain the exact command and adapter source separately if independent reproduction is intended.
+
+**Seed semantics:** the current packs contain fixed synthetic fixtures. The selected seed is injected into the fixture's seed field, but the fixture payload is otherwise unchanged. These are repeated seeded executions, not ten newly generated challenge variants. The runner remains a trusted-code execution path, not a filesystem sandbox.
