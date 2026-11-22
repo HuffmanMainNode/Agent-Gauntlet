@@ -168,7 +168,8 @@ def evaluate_trace(frames: list[dict], fixture: dict, allowed_tools: set[str]) -
 
 
 def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: set[str],
-                  policy: ContainmentPolicy | None = None,\n                  artifact_root: str | Path = "artifacts") -> dict:
+                  policy: ContainmentPolicy | None = None,
+                  artifact_root: str | Path = "artifacts") -> dict:
     """Interact with a persistent JSONL agent process until FINAL_COMMIT or a hard limit.
 
     Child code remains operator-trusted. This uses POSIX resource limits and process
@@ -181,7 +182,10 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
     policy = policy or ContainmentPolicy(mode="best-effort", wall_time_ms=30000)
     if policy.mode == "strict" and not policy.disable_network:
         raise ValueError("strict mode requires disable_network=True")
-    allowed_tools = set(allowed_tools)\n    run_id = uuid.uuid4().hex\n    containment_path = Path(artifact_root) / run_id / "containment.json"\n    with tempfile.TemporaryDirectory(prefix="gauntlet-tool-loop-") as cwd:
+    allowed_tools = set(allowed_tools)
+    run_id = uuid.uuid4().hex
+    containment_path = Path(artifact_root) / run_id / "containment.json"
+    with tempfile.TemporaryDirectory(prefix="gauntlet-tool-loop-") as cwd:
         process, containment_report = spawn_contained_process(
             command, policy, int(fixture.get("seed", 0)), cwd
         )
