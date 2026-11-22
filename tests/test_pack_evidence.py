@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from gauntlet.fixture_variants import generate_seeded_fixture
 from gauntlet.pack_runner import (
     PackValidationError,
     run_pack_suite,
@@ -142,3 +143,22 @@ def test_pack_run_preserves_failed_attempts(tmp_path, monkeypatch):
     assert rows[0]["status"] == "failed"
     assert rows[0]["error_type"] == "TimeoutError"
     assert len(rows[0]["failure_artifacts"]) == 2
+
+
+def test_seeded_fixture_generator_is_deterministic_and_preserves_evidence(tmp_path):
+    from gauntlet.pack_runner import load_pack
+
+    base = load_pack("evidence-integrity").fixture
+    first = generate_seeded_fixture(base, 1)
+    repeat = generate_seeded_fixture(base, 1)
+    second = generate_seeded_fixture(base, 5)
+    assert first == repeat
+    assert first["seed"] == 1
+    assert second["seed"] == 5
+    assert first["variant"]["generator"] == "evidence-order-sha256-v1"
+    assert first["variant"]["evidence_order"] != second["variant"]["evidence_order"]
+    assert {item["id"] for item in first["evidence"]} == {
+        item["id"] for item in base["evidence"]
+    }
+    assert first["evidence"] != base["evidence"]
+    assert base["seed"] == 20261122

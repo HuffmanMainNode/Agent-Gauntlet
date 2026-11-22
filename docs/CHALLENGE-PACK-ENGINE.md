@@ -36,4 +36,4 @@ Failed attempts are retained with a bounded error description and any containmen
 
 The adapter command is not copied into the public evidence manifest because command-line arguments may contain credentials. The manifest records its SHA-256 together with the operator-declared adapter name and version. Keep the exact command and source revision separately for reproduction.
 
-The current packs are fixed synthetic fixtures. A run seed is written into the fixture metadata, while the rest of the fixture payload remains unchanged. The current multi-seed mode therefore records repeated executions over the same challenge data, not seed-generated challenge variants. Local adapter code is operator-trusted and is not filesystem-sandboxed.
+Each run seed deterministically permutes the existing synthetic evidence records using a seed-scoped SHA-256 sort key. Evidence contents and identifiers remain unchanged; presentation order varies, and finite evidence sets mean different seeds can share a permutation. This is a presentation-order variant, not newly synthesized evidence. Local adapter code is operator-trusted and is not filesystem-sandboxed.
