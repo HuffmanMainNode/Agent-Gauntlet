@@ -139,7 +139,7 @@ The adversarial runner executes an explicitly configured command supplied by the
 
 ## Project status
 
-**Prototype / experimental.** The local fixture runner, evidence verifier, local stdin/stdout subprocess adapters, deterministic assertion operators, and experimental persistent-process JSONL session protocol are implemented. Ten declarative Challenge Laboratory packs are populated and structurally tested. Remote adapters, hardened sandboxed execution, federated leaderboard inclusion gates and independent result reproduction, and production-grade security review remain pending.
+**Prototype / experimental.** The local fixture runner, evidence verifier, POSIX resource-hardening runner, local stdin/stdout adapters, deterministic assertion operators, persistent JSONL sessions, declarative pack loader/evaluator, interactive tool-loop, signed scorecards, and local federated admission gate are implemented. Ten synthetic Challenge Laboratory packs are populated. The leaderboard currently has no registered external signers or submissions. Independent evidence replay, a hostile-code filesystem sandbox, external evaluator participation, cross-platform containment validation, and production-grade security review remain pending.
 
 See [Architecture](docs/ARCHITECTURE.md), [Scoring](docs/SCORING.md), [Security](SECURITY.md), [Contributing](CONTRIBUTING.md), and the [Failure Ledger](docs/FAILURE-LEDGER.md).
 
