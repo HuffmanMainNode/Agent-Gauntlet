@@ -261,7 +261,10 @@ def verify_scorecard_signature(scorecard: dict, signature_path: str | Path,
     signers = Path(allowed_signers).expanduser().resolve()
     if not signature.is_file() or not signers.is_file():
         raise AttestationError("signature or allowed_signers file not found")
-    payload = attestation_payload(scorecard.get("provenance", {}))
+    provenance = scorecard.get("provenance", {})
+    if provenance.get("scorecard_claims_sha256") != scorecard_claims_digest(scorecard):
+        raise AttestationError("scorecard claims do not match signed provenance digest")
+    payload = attestation_payload(provenance)
     try:
         result = subprocess.run(
             [executable, "-Y", "verify", "-f", str(signers), "-I", identity,
