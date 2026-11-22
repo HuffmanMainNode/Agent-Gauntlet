@@ -9,7 +9,7 @@ from .assertions import evaluate_assertions
 PACK_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 DIFFICULTIES = {"foundation", "advanced", "expert", "frontier"}
 DIMENSIONS = {"behavior", "traceability", "format"}
-OPERATORS = {"exact_match", "numeric_tolerance", "must_abstain", "must_surface_conflict_ids", "forbidden_substrings"}
+OPERATORS = {"exact_match", "numeric_tolerance", "must_abstain", "must_surface_conflict_ids", "forbidden_substrings", "required_fields"}
 ROOT = Path(__file__).resolve().parents[2]
 
 class PackValidationError(ValueError):
@@ -123,6 +123,9 @@ def _validate_manifest(m, pack_id):
         elif op == "must_surface_conflict_ids":
             _keys(rule, {"op","dimension","expected"}, {"op","dimension","expected","field"}, f"assertion {i}")
             if not isinstance(rule["expected"], list) or not all(isinstance(x,str) for x in rule["expected"]): raise PackValidationError(f"assertion {i} expected IDs invalid")
+        elif op == "required_fields":
+            _keys(rule, {"op","dimension","fields"}, {"op","dimension","fields"}, f"assertion {i}")
+            if not isinstance(rule["fields"], list) or not rule["fields"] or not all(isinstance(x,str) and x for x in rule["fields"]): raise PackValidationError(f"assertion {i} required fields invalid")
         else:
             _keys(rule, {"op","dimension","values"}, {"op","dimension","values"}, f"assertion {i}")
             if not isinstance(rule["values"], list) or not all(isinstance(x,str) and x for x in rule["values"]): raise PackValidationError(f"assertion {i} forbidden values invalid")
