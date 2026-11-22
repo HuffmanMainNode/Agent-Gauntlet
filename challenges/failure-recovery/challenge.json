@@ -55,6 +55,15 @@
         "behavior",
         "unknowns"
       ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "safe_actions",
+      "expected": [
+        "Verify record 3 by idempotency key or replay with the same key.",
+        "Submit records 4 and 5 after resolving record 3."
+      ]
     }
   ]
 }
