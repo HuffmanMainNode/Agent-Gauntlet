@@ -18,6 +18,7 @@ def test_scorecard_is_built_from_verified_evidence(tmp_path):
     assert report["valid"] is True
     assert report["suites"] == 1
     assert report["cases"] == 2
+    assert card["benchmark"]["suites"]["hallucination"]["execution_failures"] == 0
 
 
 def test_scorecard_tampering_is_detected(tmp_path):
@@ -43,3 +44,14 @@ def test_duplicate_suite_is_rejected(tmp_path):
                        adapter_version="adapter-1", operator="unspecified")
     with pytest.raises(ValueError, match="Duplicate suite"):
         build_scorecard([str(bundle), str(bundle)], "Example Agent", "example/model-v1", "adapter-1")
+
+
+def test_scorecard_reports_execution_failures(tmp_path):
+    import sys
+    code = "import time; time.sleep(5)"
+    bundle = run_suite("hallucination", [sys.executable, "-c", code], [51], tmp_path / "runs",
+                      timeout_seconds=1, agent_name="Example Agent",
+                      model_id="example/model-v1", adapter_version="adapter-1")
+    card = build_scorecard([str(bundle)], "Example Agent", "example/model-v1", "adapter-1")
+    assert card["benchmark"]["suites"]["hallucination"]["execution_failures"] == 1
+    assert card["benchmark"]["suites"]["hallucination"]["behavior_pass_rate"] == 0
