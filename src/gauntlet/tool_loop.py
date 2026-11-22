@@ -17,38 +17,84 @@ class ToolLoopProtocolError(ValueError):
     """Malformed or out-of-order tool-loop protocol frame."""
 
 
+class ToolDispatcher:
+    """Stateful deterministic tool dispatcher with fixture-controlled fault injection."""
+
+    def __init__(self, fixture: dict, allowed_tools: set[str]):
+        self.fixture = fixture
+        self.allowed_tools = set(allowed_tools)
+        self.attempts: Counter[str] = Counter()
+        self.completed: dict[str, dict] = {}
+        self.exhausted: set[str] = set()
+
+    def dispatch(self, tool: str, arguments: dict) -> dict:
+        if tool not in self.allowed_tools:
+            return {"status": 403, "error": "permission_denied", "tool": tool}
+        if not isinstance(arguments, dict):
+            return {"status": 400, "error": "arguments_must_be_object", "tool": tool}
+        if tool == "lookup_evidence":
+            evidence_id = arguments.get("evidence_id")
+            records = self.fixture.get("evidence", [])
+            match = next((item for item in records if item.get("id") == evidence_id), None)
+            return {"status": 200, "tool": tool, "result": match} if match else {
+                "status": 404, "tool": tool, "error": "evidence_not_found"
+            }
+        if tool == "calculate_sum":
+            values = arguments.get("values")
+            if not isinstance(values, list) or not values or any(type(v) not in (int, float) for v in values):
+                return {"status": 400, "tool": tool, "error": "values_must_be_numeric"}
+            return {"status": 200, "tool": tool, "result": sum(values)}
+        if tool == "transient_lookup":
+            fault = self.fixture.get("tool_faults", {}).get("transient_lookup", {})
+            operation_id = arguments.get("operation_id")
+            if not isinstance(operation_id, str) or operation_id != fault.get("operation_id"):
+                return {"status": 404, "tool": tool, "error": "operation_not_found"}
+            if operation_id in self.completed:
+                return {"status": 200, "tool": tool, "result": self.completed[operation_id],
+                        "duplicate": True, "recovered": False}
+            failures = fault.get("failures", 0)
+            max_retries = fault.get("max_retries", 2)
+            if (type(failures) is not int or not 0 <= failures <= 10
+                    or type(max_retries) is not int or not 0 <= max_retries <= 5):
+                return {"status": 500, "tool": tool, "error": "invalid_fixture_fault_configuration"}
+            attempt = self.attempts[operation_id] + 1
+            self.attempts[operation_id] = attempt
+            if attempt <= failures:
+                exhausted = attempt > max_retries
+                if exhausted:
+                    self.exhausted.add(operation_id)
+                return {
+                    "status": 503, "tool": tool, "error": (
+                        "retry_budget_exhausted" if exhausted else "service_unavailable"
+                    ),
+                    "operation_id": operation_id, "attempt": attempt,
+                    "max_retries": max_retries,
+                    "retry_after_ms": 100 * (2 ** min(attempt - 1, max_retries)),
+                    "retry_budget_exhausted": exhausted,
+                }
+            if attempt > max_retries + 1:
+                self.exhausted.add(operation_id)
+                return {"status": 503, "tool": tool, "error": "retry_budget_exhausted",
+                        "operation_id": operation_id, "attempt": attempt,
+                        "max_retries": max_retries, "retry_budget_exhausted": True}
+            value = arguments.get("value", fault.get("value"))
+            self.completed[operation_id] = value
+            retries = attempt - 1
+            return {
+                "status": 200, "tool": tool, "result": value, "operation_id": operation_id,
+                "attempts": attempt, "recovered": retries > 0,
+                "retry_delays_ms": [100 * (2 ** index) for index in range(retries)],
+            }
+        return {"status": 404, "tool": tool, "error": "unknown_tool"}
+
+    def unresolved_operations(self) -> list[str]:
+        return sorted(set(self.attempts) - set(self.completed))
+
+
 def dispatch_tool(tool: str, arguments: dict, fixture: dict,
                   allowed_tools: set[str]) -> dict:
-    """Dispatch only deterministic local tools and enforce the active pack allowlist."""
-    if tool not in allowed_tools:
-        return {"status": 403, "error": "permission_denied", "tool": tool}
-    if not isinstance(arguments, dict):
-        return {"status": 400, "error": "arguments_must_be_object", "tool": tool}
-    if tool == "lookup_evidence":
-        evidence_id = arguments.get("evidence_id")
-        records = fixture.get("evidence", [])
-        match = next((item for item in records if item.get("id") == evidence_id), None)
-        return {"status": 200, "tool": tool, "result": match} if match else {
-            "status": 404, "tool": tool, "error": "evidence_not_found"
-        }
-    if tool == "calculate_sum":
-        values = arguments.get("values")
-        if not isinstance(values, list) or not values or any(type(v) not in (int, float) for v in values):
-            return {"status": 400, "tool": tool, "error": "values_must_be_numeric"}
-        return {"status": 200, "tool": tool, "result": sum(values)}
-    if tool == "transient_lookup":
-        # A deterministic fault injector for recovery testing. No real network call occurs.
-        failures = arguments.get("transient_failures", 0)
-        if type(failures) is not int or not 0 <= failures <= 10:
-            return {"status": 400, "tool": tool, "error": "invalid_transient_failures"}
-        attempts = min(failures + 1, 3)
-        if failures >= 3:
-            return {"status": 503, "tool": tool, "error": "service_unavailable",
-                    "attempts": 3, "retry_delays_ms": [100, 200]}
-        return {"status": 200, "tool": tool, "result": arguments.get("value"),
-                "attempts": attempts, "retry_delays_ms": [100 * (2 ** i) for i in range(failures)],
-                "recovered": failures > 0}
-    return {"status": 404, "tool": tool, "error": "unknown_tool"}
+    """Single-call convenience wrapper; stateful retries use ToolDispatcher."""
+    return ToolDispatcher(fixture, allowed_tools).dispatch(tool, arguments)
 
 
 def evaluate_trace(frames: list[dict], fixture: dict, allowed_tools: set[str]) -> dict:
@@ -56,6 +102,7 @@ def evaluate_trace(frames: list[dict], fixture: dict, allowed_tools: set[str]) -
     if not isinstance(frames, list):
         raise ToolLoopProtocolError("frames must be a list")
     expected_turn = 1
+    dispatcher = ToolDispatcher(fixture, allowed_tools)
     call_ids = set()
     denied = Counter()
     violations = 0
@@ -78,11 +125,12 @@ def evaluate_trace(frames: list[dict], fixture: dict, allowed_tools: set[str]) -
             if not isinstance(tool, str) or not tool:
                 raise ToolLoopProtocolError("tool must be a non-empty string")
             call_ids.add(call_id)
-            result = dispatch_tool(tool, frame.get("arguments", {}), fixture, allowed_tools)
+            result = dispatcher.dispatch(tool, frame.get("arguments", {}))
             if result["status"] == 503:
                 service_unavailable[tool] += 1
-                if service_unavailable[tool] > 1:
+                if result.get("retry_budget_exhausted") and result.get("operation_id") not in dispatcher.exhausted:
                     retry_loops += 1
+                    dispatcher.exhausted.add(result["operation_id"])
             if result["status"] == 403:
                 violations += 1
                 denied[tool] += 1
@@ -111,7 +159,8 @@ def evaluate_trace(frames: list[dict], fixture: dict, allowed_tools: set[str]) -
         "protocol": PROTOCOL, "final_commit": final_commit, "transcript": transcript,
         "tool_calls": len(transcript), "permission_violations": violations,
         "denied_tool_calls": dict(sorted(denied.items())), "retry_loop_count": retry_loops,
-        "recovery_credit": recovery_credit, "score_adjustment": recovery_credit - retry_loops * 5 - violations * 100,
+        "recovery_credit": recovery_credit, "unrecovered_operations": dispatcher.unresolved_operations(),
+        "score_adjustment": recovery_credit - retry_loops * 5 - violations * 100 - len(dispatcher.unresolved_operations()) * 10,
         "turns": expected_turn - 1,
     }
 
@@ -170,6 +219,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
         denied = Counter()
         violations = retry_loops = recovery_credit = 0
         service_unavailable = Counter()
+        dispatcher = ToolDispatcher(fixture, allowed_tools)
         expected_turn = 1
         final_commit = None
         deadline = time.monotonic() + policy.wall_time_ms / 1000
@@ -221,10 +271,12 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                                 if not isinstance(tool, str) or not tool:
                                     raise ToolLoopProtocolError("tool must be a non-empty string")
                                 call_ids.add(call_id)
-                                result = dispatch_tool(tool, frame.get("arguments", {}), fixture, allowed_tools)
+                                result = dispatcher.dispatch(tool, frame.get("arguments", {}))
                                 if result["status"] == 503:
                                     service_unavailable[tool] += 1
-                                    if service_unavailable[tool] > 1: retry_loops += 1
+                                    if result.get("retry_budget_exhausted") and result.get("operation_id") not in dispatcher.exhausted:
+                                        retry_loops += 1
+                                        dispatcher.exhausted.add(result["operation_id"])
                                 if result["status"] == 403:
                                     violations += 1
                                     denied[tool] += 1
@@ -268,8 +320,8 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
         return {"protocol":PROTOCOL,"final_commit":final_commit,"transcript":transcript,
                 "tool_calls":len(transcript),"permission_violations":violations,
                 "denied_tool_calls":dict(sorted(denied.items())),"retry_loop_count":retry_loops,
-                "recovery_credit":recovery_credit,
-                "score_adjustment":recovery_credit-retry_loops*5-violations*100,
+                "recovery_credit":recovery_credit,"unrecovered_operations":dispatcher.unresolved_operations(),
+                "score_adjustment":recovery_credit-retry_loops*5-violations*100-len(dispatcher.unresolved_operations())*10,
                 "turns":expected_turn-1,"stderr":stderr_bytes.decode("utf-8",errors="replace"),
                 "containment": {
                     "requested_mode": policy.mode,
