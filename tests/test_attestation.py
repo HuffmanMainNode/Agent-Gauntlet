@@ -149,7 +149,7 @@ def test_signature_binds_suite_and_evidence_claims(tmp_path):
     pub=(tmp_path/"claims_key.pub").read_text().split()
     identity="claims-agent@example.invalid";namespace="agent-gauntlet"
     allowed=tmp_path/"claims_allowed"
-    allowed.write_text(f'{identity} namespaces="{namespace}" {pub[0]} {pub[1]}\\n')
+    allowed.write_text(f'{identity} namespaces="{namespace}" {pub[0]} {pub[1]}' + chr(10))
     card["provenance"]["scorecard_claims_sha256"]=scorecard_claims_digest(card)
     signature=sign_scorecard(card,key,identity,tmp_path/"claims.json.sig",namespace)
     card["benchmark"]["suites"]["hallucination"]["behavior_pass_rate"]=1.0
