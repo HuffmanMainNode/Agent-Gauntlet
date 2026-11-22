@@ -27,7 +27,23 @@ Ten populated, versioned challenge packs cover evidence integrity, temporal reas
 
 Start with [the Challenge Laboratory catalog](docs/CHALLENGE-LABORATORY.md). Each pack includes a manifest, synthetic fixture, expected behavior, fixed seed, permissions, resource limits, and scoring contract. Packs are data-only and safe to inspect.
 
-**Status boundary:** these ten packs are currently declarative assets. The general-purpose pack loader/evaluator and CLI execution path are not yet implemented. The executable adversarial suites below remain the current CLI evaluation path.
+**Pack engine available:** all ten packs now include executable assertion contracts. The local engine loads and validates pack data, then scores a separately generated JSON response. It never executes agent-submitted code. See [Challenge Pack Engine](docs/CHALLENGE-PACK-ENGINE.md).
+
+### Evaluate a challenge pack
+
+Run one pack after saving your agent's JSON response:
+
+```sh
+python -m gauntlet pack --name technical-reasoning --response response.json
+```
+
+Run all ten using `responses/<pack-id>.json` files:
+
+```sh
+python -m gauntlet pack --all --responses-dir responses/
+```
+
+The engine reports behavior, traceability, and format scores. Missing responses or failed assertions produce a non-zero exit. The pack evaluator is data-only and does not execute the agent.
 
 ## Evidence bundles
 
@@ -81,7 +97,7 @@ The adversarial runner executes an explicitly configured command supplied by the
 
 ## Project status
 
-**Prototype / experimental.** The local fixture runner, evidence verifier, local stdin/stdout subprocess adapters, deterministic assertion operators, and experimental persistent-process JSONL session protocol are implemented. Ten declarative Challenge Laboratory packs are populated and structurally tested. A general-purpose pack loader/evaluator, remote adapters, interactive tool-round-trip sessions, hardened sandboxed execution, cryptographic signatures, independent result federation, and production-grade security review remain pending.
+**Prototype / experimental.** The local fixture runner, evidence verifier, local stdin/stdout subprocess adapters, deterministic assertion operators, and experimental persistent-process JSONL session protocol are implemented. Ten declarative Challenge Laboratory packs are populated and structurally tested. Remote adapters, interactive tool-round-trip sessions, hardened sandboxed execution, cryptographic signatures, independent result federation, and production-grade security review remain pending.
 
 See [Architecture](docs/ARCHITECTURE.md), [Scoring](docs/SCORING.md), [Security](SECURITY.md), [Contributing](CONTRIBUTING.md), and the [Failure Ledger](docs/FAILURE-LEDGER.md).
 

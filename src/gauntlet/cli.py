@@ -6,6 +6,7 @@ from pathlib import Path
 from .adversarial_runner import run_suite
 from .leaderboard import build_scorecard, verify_scorecard, write_scorecard
 from .runner import run, verify
+from .pack_runner import discover_pack_ids, evaluate_response_file, load_pack
 
 
 def main():
@@ -27,6 +28,12 @@ def main():
     adv.add_argument("--model-id", required=True)
     adv.add_argument("--adapter-version", required=True)
     adv.add_argument("--operator", default="unspecified")
+    pack = sub.add_parser("pack", help="evaluate a data-only challenge pack response")
+    pack.add_argument("--name", help="challenge pack identifier")
+    pack.add_argument("--all", action="store_true", help="evaluate every discovered challenge pack")
+    pack.add_argument("--response", help="JSON response file for one pack")
+    pack.add_argument("--responses-dir", default="responses", help="directory containing <pack-id>.json responses for --all")
+    pack.add_argument("--output", default="artifacts/packs", help="directory for evaluation reports")
     card = sub.add_parser("scorecard", help="build a public scorecard from verified adversarial evidence bundles")
     card.add_argument("--bundle", action="append", required=True, help="evidence bundle directory; repeat for each suite")
     card.add_argument("--agent-name", required=True)
@@ -54,6 +61,30 @@ def main():
             path = run_suite(args.suite, command, seeds, Path(args.output), args.timeout,
                              args.agent_name, args.model_id, args.adapter_version, args.operator, args.protocol)
             print(json.dumps({"bundle": str(path)}, indent=2))
+        elif args.command == "pack":
+            if args.all == bool(args.name):
+                raise ValueError("choose exactly one of --name or --all")
+            if args.all and args.response:
+                raise ValueError("--response cannot be combined with --all")
+            if args.name and not args.response:
+                raise ValueError("--response is required with --name")
+            ids = discover_pack_ids() if args.all else [args.name]
+            output = Path(args.output)
+            results = []
+            missing = []
+            for pack_id in ids:
+                response_path = Path(args.responses_dir) / f"{pack_id}.json" if args.all else Path(args.response)
+                if not response_path.is_file():
+                    missing.append(pack_id)
+                    continue
+                result = evaluate_response_file(load_pack(pack_id), response_path)
+                output.mkdir(parents=True, exist_ok=True)
+                (output / f"{pack_id}.result.json").write_text(json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+                results.append(result)
+            summary = {"evaluated": len(results), "missing_responses": missing, "passed": sum(1 for item in results if item["passed"]), "failed": sum(1 for item in results if not item["passed"]), "results": results}
+            print(json.dumps(summary, indent=2))
+            if missing or any(not item["passed"] for item in results):
+                return 1
         elif args.command == "scorecard":
             scorecard = build_scorecard(args.bundle, args.agent_name, args.model_id,
                                         args.adapter_version, args.operator)

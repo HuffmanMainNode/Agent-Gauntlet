@@ -75,6 +75,13 @@ def evaluate_assertions(assertions: list[dict], response: dict) -> list[dict]:
                     raise ValueError("field and expected conflict IDs must be strings")
                 passed = isinstance(actual, list) and all(item in actual for item in required)
                 detail = "matched" if passed else f"{field} did not contain all required conflict IDs"
+            elif op == "required_fields":
+                fields = rule["fields"]
+                if not isinstance(fields, list) or not all(isinstance(item, str) and item for item in fields):
+                    raise ValueError("fields must be a list of non-empty strings")
+                missing = [field for field in fields if field not in response]
+                passed = not missing
+                detail = "all required fields present" if passed else f"missing required fields: {missing}"
             elif op == "forbidden_substrings":
                 forbidden = rule["values"]
                 if not isinstance(forbidden, list) or not all(isinstance(item, str) for item in forbidden):

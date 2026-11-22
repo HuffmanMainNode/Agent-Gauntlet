@@ -29,5 +29,30 @@
     "time_seconds": 120,
     "max_output_bytes": 32768,
     "external_dependencies": false
-  }
+  },
+  "assertions": [
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "behavior",
+      "expected": "report_conflict"
+    },
+    {
+      "op": "exact_match",
+      "dimension": "traceability",
+      "path": "conflict_ids",
+      "expected": [
+        "E-101",
+        "E-102"
+      ]
+    },
+    {
+      "op": "required_fields",
+      "dimension": "format",
+      "fields": [
+        "behavior",
+        "conflict_ids"
+      ]
+    }
+  ]
 }

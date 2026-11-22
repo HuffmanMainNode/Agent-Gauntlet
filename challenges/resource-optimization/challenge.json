@@ -29,5 +29,30 @@
     "time_seconds": 120,
     "max_output_bytes": 32768,
     "external_dependencies": false
-  }
+  },
+  "assertions": [
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "behavior",
+      "expected": "maximize_value_within_budget"
+    },
+    {
+      "op": "exact_match",
+      "dimension": "traceability",
+      "path": "selected_tasks",
+      "expected": [
+        "B",
+        "C"
+      ]
+    },
+    {
+      "op": "required_fields",
+      "dimension": "format",
+      "fields": [
+        "behavior",
+        "selected_tasks"
+      ]
+    }
+  ]
 }

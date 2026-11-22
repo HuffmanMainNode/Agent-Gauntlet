@@ -29,5 +29,29 @@
     "time_seconds": 120,
     "max_output_bytes": 32768,
     "external_dependencies": false
-  }
+  },
+  "assertions": [
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "behavior",
+      "expected": "limit_causal_claim"
+    },
+    {
+      "op": "exact_match",
+      "dimension": "traceability",
+      "path": "supported",
+      "expected": [
+        "Observed groups had different reported improvement proportions."
+      ]
+    },
+    {
+      "op": "required_fields",
+      "dimension": "format",
+      "fields": [
+        "behavior",
+        "supported"
+      ]
+    }
+  ]
 }
