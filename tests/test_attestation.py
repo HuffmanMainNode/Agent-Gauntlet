@@ -152,6 +152,6 @@ def test_signature_binds_suite_and_evidence_claims(tmp_path):
     allowed.write_text(f'{identity} namespaces="{namespace}" {pub[0]} {pub[1]}' + chr(10))
     card["provenance"]["scorecard_claims_sha256"]=scorecard_claims_digest(card)
     signature=sign_scorecard(card,key,identity,tmp_path/"claims.json.sig",namespace)
-    card["benchmark"]["suites"]["hallucination"]["behavior_pass_rate"]=1.0
+    card["benchmark"]["suites"]["hallucination"]["behavior_pass_rate"]=0.1234
     with pytest.raises(AttestationError,match="claims do not match"):
         verify_scorecard_signature(card,signature,allowed,identity,namespace)
