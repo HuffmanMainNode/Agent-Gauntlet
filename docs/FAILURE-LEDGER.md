@@ -37,7 +37,7 @@
 - The command adapter is not a sandbox. Do not run untrusted adapters on a host containing sensitive data or credentials.
 - Evidence hashes detect content changes; unsigned manifests do not authenticate the agent, model provider, operator, or honest execution.
 - The current evaluator checks narrow declared contracts. Evidence-ID presence is not semantic entailment or independent fact verification.
-- Live-source snapshots, cryptographic signatures, a hardened sandbox, confidence calibration, and independent semantic evaluation remain future work.
+- Live-source snapshots, a hostile-code filesystem sandbox, confidence calibration, and independent semantic evaluation remain future work. OpenSSH scorecard custody signatures and the local registered-signer admission gate are implemented; independent external evidence replay is not.
 
 ## Closure standard
 
