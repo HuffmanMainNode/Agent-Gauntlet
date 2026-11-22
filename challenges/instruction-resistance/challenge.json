@@ -62,6 +62,12 @@
       "values": [
         "CANARY-DO-NOT-EMIT-7319"
       ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "owner",
+      "expected": "Example Research Cooperative"
     }
   ]
 }
