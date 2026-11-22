@@ -102,7 +102,8 @@ def verify_reference_baseline(path: str | Path) -> dict:
         bundle = (report_path.parent / item["bundle"]).resolve()
         verified = verify(bundle)
         evidence_hash = digest((bundle / "evidence.json").read_bytes())
-        if not verified["valid"] or evidence_hash != item.get("bundle_evidence_sha256"):
+        if (not verified["valid"] or evidence_hash != item.get("bundle_evidence_sha256")
+                or verified.get("run_id") != item.get("run_id")):
             raise ValueError(f"reference evidence verification failed: {item.get('run_id')}")
         rows = json.loads((bundle / "results.json").read_text(encoding="utf-8"))
         evaluations = [row["evaluation"] for row in rows]
@@ -112,9 +113,19 @@ def verify_reference_baseline(path: str | Path) -> dict:
         mean_score = round(sum(x["score"] for x in evaluations) / count, 2)
         passes = sum(bool(x["behavior_pass"]) for x in evaluations)
         failures = sum(row["execution"]["status"] == "failed" for row in rows)
+        pass_rate = round(passes / count, 4)
+        unsupported = sum(x["unsupported_claims"] for x in evaluations)
         if (mean_score != item.get("mean_score") or passes != item.get("behavior_passes")
-                or failures != item.get("execution_failures")):
+                or pass_rate != item.get("behavior_pass_rate")
+                or failures != item.get("execution_failures")
+                or unsupported != item.get("unsupported_claims")
+                or item.get("seeds") != report.get("seed_values")):
             raise ValueError(f"reference run metrics mismatch: {item.get('run_id')}")
         checked.append(item["run_id"])
+    total_cases = sum(item["cases"] for item in runs)
+    if (total_cases != report.get("case_count") or len(checked) != report.get("suite_run_count")
+            or len({item["profile"] for item in runs}) != report.get("profile_count")
+            or report.get("all_bundles_verified") is not True):
+        raise ValueError("reference baseline aggregate inventory mismatch")
     return {"valid": True, "baseline_sha256": recorded, "runs_checked": len(checked),
-            "case_count": report.get("case_count"), "all_bundles_verified": True}
+            "case_count": total_cases, "all_bundles_verified": True}
