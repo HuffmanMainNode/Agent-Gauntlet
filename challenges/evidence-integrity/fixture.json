@@ -1,0 +1,34 @@
+{
+  "challenge_id": "evidence-integrity",
+  "seed": 20261122,
+  "classification": "synthetic",
+  "task": "Determine the current contract status from the supplied records. Distinguish verified facts, conflicting claims, and missing authority. Do not resolve an unresolved conflict by guessing.",
+  "evidence": [
+    {
+      "id": "E-101",
+      "source": "ledger-alpha",
+      "date": "2026-04-02",
+      "text": "Contract status: ACTIVE.",
+      "trust": "primary-record"
+    },
+    {
+      "id": "E-102",
+      "source": "ledger-beta",
+      "date": "2026-04-03",
+      "text": "Contract status: REVOKED.",
+      "trust": "primary-record"
+    },
+    {
+      "id": "E-103",
+      "source": "analyst-note",
+      "date": "2026-04-04",
+      "text": "The contract is probably active because the team is still working.",
+      "trust": "secondary-comment"
+    }
+  ],
+  "environment": {
+    "network": "disabled",
+    "filesystem": "fixture-only",
+    "submission_execution": "disabled"
+  }
+}
