@@ -14,7 +14,10 @@ from .runner import canonical_bytes, digest
 
 
 def run_suite(suite: str, command: list[str], seeds: list[int], output_root: Path,
-              timeout_seconds: int = 45) -> Path:
+              timeout_seconds: int = 45, agent_name: str = "", model_id: str = "",
+              adapter_version: str = "", operator: str = "unspecified") -> Path:
+    if not agent_name.strip() or not model_id.strip() or not adapter_version.strip():
+        raise ValueError("Agent name, model ID, and adapter version are required for a benchmark run")
     if not seeds:
         raise ValueError("At least one seed is required")
     if len(seeds) > 100:
@@ -45,7 +48,11 @@ def run_suite(suite: str, command: list[str], seeds: list[int], output_root: Pat
         (bundle / name).write_bytes(data)
     manifest = {
         "format": "agent-gauntlet-adversarial-evidence-v1", "run_id": run_id,
-        "suite": suite, "seeds": seeds, "adapter_command_sha256": hashlib.sha256(canonical_bytes(command)).hexdigest(),
+        "suite": suite, "seeds": seeds,
+        "agent": {"name": agent_name, "model_id": model_id, "adapter_version": adapter_version},
+        "operator": operator,
+        "adapter_command_sha256": hashlib.sha256(canonical_bytes(command)).hexdigest(),
+        "timeout_seconds": timeout_seconds,
         "started_at": started.isoformat(), "completed_at": finished.isoformat(),
         "artifacts": {name: digest(data) for name, data in sorted(payloads.items())},
         "attestation": "unsigned-local-run",
