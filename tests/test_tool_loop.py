@@ -184,3 +184,30 @@ def test_strict_tool_loop_requires_network_disable():
         run_tool_loop([sys.executable, "-c", "pass"], {"task": "test"}, FIXTURE,
                       {"lookup_evidence"},
                       ContainmentPolicy(mode="strict", disable_network=False))
+
+
+def test_live_tool_loop_rewards_only_observed_fixture_retries():
+    fixture = {
+        **FIXTURE,
+        "tool_faults": {"transient_lookup": {
+            "operation_id": "record-3", "failures": 2, "max_retries": 2,
+            "value": "record-3-committed",
+        }},
+    }
+    code = (
+        "import json,sys; init=json.loads(sys.stdin.readline()); "
+        "forbidden=False\n"
+        "for i in range(1,4):\n"
+        " print(json.dumps({'protocol':'tool-loop-v1','event':'TOOL_CALL','turn_index':i,"
+        "'call_id':f'r{i}','tool':'transient_lookup','arguments':{'operation_id':'record-3'}}),flush=True)\n"
+        " result=json.loads(sys.stdin.readline())\n"
+        " assert result['result']['status'] == (200 if i == 3 else 503)\n"
+        "print(json.dumps({'protocol':'tool-loop-v1','event':'FINAL_COMMIT','turn_index':4,"
+        "'payload':{'status':'recovered'}}),flush=True)"
+    )
+    result = run_tool_loop([sys.executable, "-c", code], {"task": "recover"}, fixture,
+                           {"transient_lookup"})
+    assert [item["tool_result"]["status"] for item in result["transcript"]] == [503, 503, 200]
+    assert result["recovery_credit"] == 4
+    assert result["unrecovered_operations"] == []
+    assert result["score_adjustment"] == 4
