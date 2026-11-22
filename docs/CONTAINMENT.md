@@ -28,4 +28,4 @@ print(result.returncode, result.stdout.decode("utf-8", errors="replace"))
 print(result.report_path)
 ```
 
-Each run writes `artifacts/<RUN_ID>/containment.json` by default. Pass `artifact_root=` to select another evidence root. The report records kernel-confirmed `(soft, hard)` resource limits and namespace capability status.
+Single-turn runs write `artifacts/<RUN_ID>/containment.json` by default. Interactive tool-loop runs use the same supervisor and write both `containment.json` and `execution.json` beneath `artifacts/<RUN_ID>/`. Pass `artifact_root=` to select another evidence root. The containment report records child-confirmed `(soft, hard)` resource limits and namespace capability status. The execution record records return code, timeout state, byte counts, and truncation flags. Successful tool-loop results also include a SHA-256 digest of the canonical tool transcript.
