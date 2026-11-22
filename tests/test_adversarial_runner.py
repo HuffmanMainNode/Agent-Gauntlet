@@ -10,7 +10,8 @@ def test_seeded_adversarial_run_produces_evidence(tmp_path):
         "import json,sys; t=json.load(sys.stdin); "
         "print(json.dumps({'claims': [], 'abstain': True, 'conflict_detected': True}))"
     )
-    bundle = run_suite("hallucination", [sys.executable, "-c", code], [1, 2, 3], tmp_path)
+    bundle = run_suite("hallucination", [sys.executable, "-c", code], [1, 2, 3], tmp_path,
+                      agent_name="Example", model_id="example/model-v1", adapter_version="adapter-1")
     evidence = json.loads((bundle / "evidence.json").read_text())
     summary = json.loads((bundle / "summary.json").read_text())
     assert evidence["attestation"] == "unsigned-local-run"

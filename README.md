@@ -53,7 +53,11 @@ The expanded prototype includes seeded suites for:
 Run a suite using an adapter command you explicitly trust:
 
 ```sh
-python -m gauntlet adversarial --suite hallucination --adapter-json '["python","my_adapter.py"]' --seeds 1,2,3,4,5
+python -m gauntlet adversarial --suite hallucination --adapter-json '["python","my_adapter.py"]' --seeds 1,2,3,4,5 \
+  --agent-name "Example Agent" \
+  --model-id "provider/model/version" \
+  --adapter-version "git:abc123" \
+  --operator "community-handle"
 ```
 
 The adapter receives one JSON task on stdin and returns one JSON response on stdout. The command is executed directly without a shell and has a timeout, but **this is not a sandbox**. Run adapters only in a disposable environment. The report records per-case results, suite summaries, seeds, and hashes. It does not record the raw command line.
