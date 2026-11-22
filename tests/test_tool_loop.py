@@ -126,6 +126,8 @@ def test_interactive_process_receives_tool_result_and_commits(tmp_path):
     saved_report = json.loads(Path(result["containment_report_path"]).read_text())
     assert saved_report == result["containment"]
     assert Path(result["containment_report_path"]).name == "containment.json"
+    execution_record = json.loads((Path(result["containment_report_path"]).parent / "execution.json").read_text())
+    assert execution_record == result["execution"]
 
 def test_pack_tool_permissions_are_narrow():
     pack=load_pack("privacy-authorization",ROOT/"challenges")
@@ -297,3 +299,24 @@ def test_tool_loop_bounds_and_reports_stderr_truncation(tmp_path):
     assert result["execution"]["stderr_bytes"] == 128
     assert result["execution"]["stderr_truncated"] is True
     assert result["execution"]["returncode"] == 0
+
+
+def test_tool_loop_timeout_persists_failure_evidence_and_reaps_child(tmp_path):
+    import subprocess
+    from gauntlet.containment import ContainmentPolicy
+    code = "import sys,time; sys.stdin.readline(); time.sleep(30)"
+    artifact_root = tmp_path / "artifacts"
+    with pytest.raises(TimeoutError, match="without FINAL_COMMIT"):
+        run_tool_loop(
+            [sys.executable, "-c", code], {"task": "timeout"}, FIXTURE,
+            {"lookup_evidence"},
+            ContainmentPolicy(mode="best-effort", wall_time_ms=250),
+            artifact_root=artifact_root,
+        )
+    run_dirs = list(artifact_root.iterdir())
+    assert len(run_dirs) == 1
+    report = json.loads((run_dirs[0] / "containment.json").read_text())
+    execution = json.loads((run_dirs[0] / "execution.json").read_text())
+    assert report["filesystem_sandboxed"] is False
+    assert execution["timed_out"] is True
+    assert execution["returncode"] != 0
