@@ -81,3 +81,22 @@ def test_interactive_process_receives_tool_result_and_commits(tmp_path):
 def test_pack_tool_permissions_are_narrow():
     pack=load_pack("privacy-authorization",ROOT/"challenges")
     assert pack.manifest["permissions"]["tools"]==["lookup_evidence"]
+
+def test_cli_tool_loop_evaluates_final_commit(tmp_path):
+    import subprocess
+    code = (
+        "import json,sys; init=json.loads(sys.stdin.readline()); "
+        "print(json.dumps({'protocol':'tool-loop-v1','event':'FINAL_COMMIT','turn_index':1,"
+        "'payload':{'behavior':'calculate_exactly','value':12800,'unit':'bytes',"
+        "'evidence_ids':['R-001'],'calculation':'3 * 4096 + 512'}}),flush=True)"
+    )
+    output=tmp_path/"out"
+    completed=subprocess.run(
+        [sys.executable,"-m","gauntlet","tool-loop","--name","technical-reasoning",
+         "--adapter-json",json.dumps([sys.executable,"-c",code]),"--output",str(output)],
+        cwd=ROOT,capture_output=True,text=True,check=False,
+    )
+    assert completed.returncode==0, completed.stderr
+    report=json.loads((output/"technical-reasoning.tool-loop.json").read_text())
+    assert report["pack_evaluation"]["passed"] is True
+    assert report["pack_evaluation"]["score"]==100.0
