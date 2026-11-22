@@ -22,7 +22,7 @@ def build_gri(pack_results: list[dict[str, Any]],
         if not isinstance(result, dict):
             raise ValueError("each pack result must be an object")
         domain = result.get("pack_id")
-        if domain not in grouped:
+        if not isinstance(domain, str) or domain not in grouped:
             raise ValueError(f"unexpected GRI domain: {domain!r}")
         score = result.get("score")
         if type(score) not in (int, float) or not math.isfinite(float(score)) or not 0 <= score <= 100:
