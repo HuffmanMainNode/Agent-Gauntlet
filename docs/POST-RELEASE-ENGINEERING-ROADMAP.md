@@ -43,7 +43,7 @@ This roadmap separates confirmed repository state, current design limits, and th
 
 ### Phase A: unify the execution supervisor
 
-**Implementation delivered in this branch, pending CI and review.** The shared `spawn_contained_process` and process-group lifecycle helpers are now used by both adversarial adapters and interactive tool-loop agents. The supervisor owns:
+**Implemented in PR #24; the Python 3.11/3.12/3.13 matrix and 25-seed reference workflow passed. Pending review and merge.** The shared `spawn_contained_process` and process-group lifecycle helpers are now used by both adversarial adapters and interactive tool-loop agents. The supervisor owns:
 - environment construction and temporary working directories;
 - resource limit application and post-application confirmation;
 - namespace preflight and best-effort/strict behavior;
