@@ -33,7 +33,7 @@
 
 ## Known warnings and limitations (not closed defects)
 
-- GitHub Actions emitted a Node.js 20 deprecation warning for the selected action versions. It did not fail the latest workflow. Track and update action versions deliberately after compatibility verification.
+- GitHub Actions previously emitted a Node.js 20 deprecation warning for `actions/checkout@v4` and `actions/setup-python@v5`. Updated to `actions/checkout@v5` and `actions/setup-python@v6` in PR #18; the final Node 24-compatible workflow completed successfully.
 - The command adapter is not a sandbox. Do not run untrusted adapters on a host containing sensitive data or credentials.
 - Evidence hashes detect content changes; unsigned manifests do not authenticate the agent, model provider, operator, or honest execution.
 - The current evaluator checks narrow declared contracts. Evidence-ID presence is not semantic entailment or independent fact verification.
@@ -91,3 +91,21 @@ Never mark a failure closed merely because a later unrelated CI run is green.
 - **Regression coverage:** Add a signed-scorecard tampering test that changes a suite pass rate and recomputes the ordinary scorecard checksum. The leaderboard gate must still reject the modified scorecard.
 - **Verification:** The final PR branch passed the complete Python 3.11/3.12/3.13 test matrix in [workflow 45054991877](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45054991877). The leaderboard submission gate passed in [workflow 45054997644](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45054997644). The signed-claim tampering regression test passed.
 - **Disposition:** Closed by PR #18 after the final cross-version CI matrix and leaderboard gate passed. Earlier red CI attempts remain in Actions as preserved development history.
+
+
+## Entry FG-2026-11-22-008: GRI and leaderboard development fixtures lagged the signed-submission contract
+
+- **Observed:** The Commit 44 development branch produced multiple red CI runs while the GRI and leaderboard contracts were tightened. Representative runs include [45053319637](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45053319637), [45053362118](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45053362118), [45053378774](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45053378774), [45053540089](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45053540089), and [45053543803](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45053543803).
+- **Root causes:** Several tests still used the older provenance payload without pack-result hashes; leaderboard fixtures omitted complete per-suite seed inventories; an empty-board test conflicted with the intended valid-but-unranked bootstrap state; and one geometric-mean expectation was arithmetically incorrect.
+- **Impact:** The new admission gate could not be trusted until the tests exercised the current signed data contract and seed completeness rules.
+- **Correction:** Updated signed provenance fixtures, added explicit distinct seed inventories, corrected the GRI expectation, and made an empty but valid submission directory return a valid report with zero ranked submissions.
+- **Verification:** PR #16 passed the full Python 3.11/3.12/3.13 test matrix in [workflow 45053558139](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45053558139) and the leaderboard gate in [workflow 45053558080](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45053558080).
+- **Disposition:** Closed by PR #16. All historical red runs remain available in Actions.
+
+## Entry FG-2026-11-22-009: scorecard-claim remediation exposed stale and ineffective regression fixtures
+
+- **Observed:** During PR #18, initial CI attempts failed because signature tests expected older error paths, a test mutated a suite pass rate to a value that was already present, and one OpenSSH trust fixture contained an invalid line ending. Leaderboard fixture records also needed to reflect exact case-to-seed inventory.
+- **Impact:** These were test-fixture defects that obscured whether the new claim-binding implementation was working.
+- **Correction:** Updated expected failure conditions, changed the tamper test to a guaranteed-distinct value, generated a valid allowed-signers line, and supplied complete suite/evidence inventories.
+- **Verification:** Final PR #18 commit passed all tests on Python 3.11, 3.12, and 3.13 in [workflow 45055098865](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055098865); the leaderboard gate passed in [workflow 45055098649](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055098649).
+- **Disposition:** Closed by PR #18. The security regression test now proves that changing a signed suite claim cannot be concealed by recalculating the ordinary scorecard checksum.
