@@ -25,6 +25,12 @@ def build_scorecard(bundle_paths: list[str], agent_name: str, model_id: str,
         if evidence.get("format") != "agent-gauntlet-adversarial-evidence-v1":
             raise ValueError(f"Not an adversarial evidence bundle: {path}")
         rows = json.loads((path / "results.json").read_text(encoding="utf-8"))
+        declared_agent = evidence.get("agent")
+        expected_agent = {"name": agent_name, "model_id": model_id, "adapter_version": adapter_version}
+        if declared_agent != expected_agent:
+            raise ValueError("Scorecard metadata does not match run-time evidence manifest")
+        if evidence.get("operator", "unspecified") != operator:
+            raise ValueError("Operator metadata does not match run-time evidence manifest")
         suite = evidence["suite"]
         if suite in suites:
             raise ValueError(f"Duplicate suite bundle supplied: {suite}")
