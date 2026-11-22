@@ -1,0 +1,227 @@
+{
+  "format": "agent-gauntlet-ci-failure-index-v1",
+  "audit_date": "2026-11-22",
+  "workflow_runs_reviewed": 485,
+  "failed_workflow_runs": 152,
+  "interpretation": "Counts are failed GitHub Actions workflow runs, not counts of unique defects. Several runs repeat the same failure while commits were iteratively corrected. Representative diagnostics were inspected for each cluster; the failure ledger records distinct root causes and closure evidence.",
+  "groups": {
+    "feature/adversarial-gauntlet-expansion": {
+      "failed_run_count": 5,
+      "run_ids": [
+        45015200052,
+        45015184680,
+        45015179238,
+        45015173019,
+        45015145059
+      ],
+      "representative_finding": "Evidence-format expectations changed during the initial adversarial evidence-bundle rollout; representative failure reported unsupported evidence format."
+    },
+    "feature/attested-run-metadata": {
+      "failed_run_count": 5,
+      "run_ids": [
+        45015940913,
+        45015937451,
+        45015913119,
+        45015910194,
+        45015885559
+      ],
+      "representative_finding": "Run metadata became mandatory while older test fixtures still omitted agent/model/adapter metadata. Root cause and correction are recorded in failure ledger FG-001."
+    },
+    "feature/multi-turn-session-protocol": {
+      "failed_run_count": 5,
+      "run_ids": [
+        45018435417,
+        45018416413,
+        45018413453,
+        45018390260,
+        45018387153
+      ],
+      "representative_finding": "JSONL input used a literal escaped delimiter instead of physical line breaks. Root cause and correction are recorded in FG-006."
+    },
+    "feat/deterministic-semantic-assertions": {
+      "failed_run_count": 5,
+      "run_ids": [
+        45019395947,
+        45019393317,
+        45019391548,
+        45019388733,
+        45019385865
+      ],
+      "representative_finding": "Tests imported gauntlet.assertions before the module landed on the branch; collection failed with ModuleNotFoundError."
+    },
+    "feat/commit-40-challenge-pack-engine": {
+      "failed_run_count": 19,
+      "run_ids": [
+        45050989515,
+        45050987057,
+        45050983536,
+        45050945195,
+        45050927930,
+        45050924794,
+        45050922427,
+        45050918695,
+        45050909032,
+        45050906475,
+        45050901953,
+        45050899324,
+        45050897066,
+        45050893340,
+        45050877205,
+        45050873257,
+        45050863106,
+        45050822385,
+        45050819188
+      ],
+      "representative_finding": "Pack manifests were incrementally brought into the required assertions and permission schema; discovery tests initially included a legacy non-pack challenge."
+    },
+    "feat/commit-41-tool-loop-v1": {
+      "failed_run_count": 12,
+      "run_ids": [
+        45051294705,
+        45051291747,
+        45051288099,
+        45051284763,
+        45051281728,
+        45051277942,
+        45051275640,
+        45051271152,
+        45051266372,
+        45051263085,
+        45051247917,
+        45051244173
+      ],
+      "representative_finding": "Challenge permission fixtures and tests were out of sync after the per-pack tools allowlist was added."
+    },
+    "feat/commit-42-openssh-attestation": {
+      "failed_run_count": 2,
+      "run_ids": [
+        45051709517,
+        45051666010
+      ],
+      "representative_finding": "Literal escaped newline sequences were written into Python source during edits, causing SyntaxError during test collection."
+    },
+    "feat/commit-44-gri-leaderboard-gate": {
+      "failed_run_count": 59,
+      "run_ids": [
+        45053543803,
+        45053540089,
+        45053536400,
+        45053378801,
+        45053378774,
+        45053362118,
+        45053358597,
+        45053348806,
+        45053345582,
+        45053345577,
+        45053323080,
+        45053319637,
+        45053319582,
+        45053304551,
+        45053301864,
+        45053275679,
+        45053275671,
+        45053271030,
+        45053271011,
+        45053236535,
+        45053236528,
+        45053232898,
+        45053232792,
+        45053198297,
+        45053194825,
+        45053194746,
+        45053179413,
+        45053176407,
+        45053176340,
+        45052863163,
+        45052863155,
+        45052810853,
+        45052810838,
+        45052804192,
+        45052799483,
+        45052799481,
+        45052768487,
+        45052760133,
+        45052748832,
+        45052737852,
+        45052737832,
+        45052734562,
+        45052710214,
+        45052710211,
+        45052699839,
+        45052684836,
+        45052669866,
+        45052659796,
+        45052659706,
+        45052649585,
+        45052646618,
+        45052642458,
+        45052581487,
+        45052564153,
+        45052539022,
+        45052527163,
+        45052520208,
+        45052506470,
+        45052485565
+      ],
+      "representative_finding": "Successive schema and admission changes exposed incomplete provenance fixtures, outdated GRI expected values, incomplete evidence/seed inventories, and changing empty-board semantics."
+    },
+    "fix/signed-scorecard-claims-binding": {
+      "failed_run_count": 27,
+      "run_ids": [
+        45054921696,
+        45054918895,
+        45054913884,
+        45054903698,
+        45054898787,
+        45054830025,
+        45054825920,
+        45054805395,
+        45054800063,
+        45054786116,
+        45054780723,
+        45054761872,
+        45054758378,
+        45054754746,
+        45054671348,
+        45054655364,
+        45054641480,
+        45054639094,
+        45054622451,
+        45054619134,
+        45054603492,
+        45054599521,
+        45054581695,
+        45054567109,
+        45054563106,
+        45054525997,
+        45054522262
+      ],
+      "representative_finding": "The new signed-claims digest required updates to scorecard fixtures and allowed_signers test files; early tests also had newline and assertion mismatches. Final correction is recorded in FG-007."
+    },
+    "fix/tool-loop-containment-parity": {
+      "failed_run_count": 9,
+      "run_ids": [
+        45055834805,
+        45055834771,
+        45055830207,
+        45055812104,
+        45055775760,
+        45055770229,
+        45055755569,
+        45055738895,
+        45055729009
+      ],
+      "representative_finding": "A literal escaped newline in a multi-line import caused SyntaxError across the matrix. Root cause and correction are recorded in FG-009."
+    },
+    "fix/tool-loop-observed-retries": {
+      "failed_run_count": 4,
+      "run_ids": [
+        45056178392,
+        45056174839,
+        45056157801,
+        45056142556
+      ],
+      "representative_finding": "Legacy tests still expected the previous one-call, caller-declared retry behavior after the stateful fixture-controlled retry model was introduced. Correction is recorded in FG-010."
+    }
+  }
+}
