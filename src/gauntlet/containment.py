@@ -249,7 +249,7 @@ def run_contained(argv: list[str], stdin_bytes: bytes, policy: ContainmentPolicy
 
     with tempfile.TemporaryDirectory(prefix="gauntlet-") as temp_dir:
         env = _minimal_environment(seed, temp_dir)
-        namespaces = _probe_namespaces(env) if policy.mode != "off" else False
+        namespaces = _probe_namespaces(env) if policy.mode != "off" and policy.disable_network else False
         if policy.mode == "strict" and not namespaces:
             raise ContainmentUnavailableError(
                 "Strict containment unavailable: Linux unshare user/net/PID namespace probe failed"
