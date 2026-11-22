@@ -1,6 +1,6 @@
 {
   "id": "reproducibility",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "title": "Reproducibility Trial: Independent Reproduction",
   "category": "reproducibility",
   "difficulty": "frontier",
@@ -46,14 +46,9 @@
       "dimension": "traceability",
       "path": "normalized_findings[*].evidence_ids",
       "expected": [
-        {
-          "claim": "42",
-          "evidence_ids": [
-            "D-001",
-            "D-002",
-            "D-003"
-          ]
-        }
+        "D-001",
+        "D-002",
+        "D-003"
       ]
     },
     {
@@ -63,6 +58,34 @@
         "behavior",
         "normalized_findings"
       ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "normalized_findings[*].claim",
+      "expected": "42"
+    },
+    {
+      "op": "exact_match",
+      "dimension": "traceability",
+      "path": "normalized_findings[*].evidence_ids",
+      "expected": [
+        "D-001",
+        "D-002",
+        "D-003"
+      ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "format",
+      "path": "canonicalization",
+      "expected": "UTF-8 JSON; sorted object keys; compact separators; arrays retain order."
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "calculation",
+      "expected": "17 + 25 = 42"
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "id": "technical-reasoning",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "title": "Technical Reasoning: Dependency-Free Calculation",
   "category": "technical-reasoning",
   "difficulty": "foundation",
@@ -56,6 +56,24 @@
         "behavior",
         "evidence_ids"
       ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "value",
+      "expected": 12800
+    },
+    {
+      "op": "exact_match",
+      "dimension": "format",
+      "path": "unit",
+      "expected": "bytes"
+    },
+    {
+      "op": "exact_match",
+      "dimension": "traceability",
+      "path": "calculation",
+      "expected": "3 * 4096 + 512"
     }
   ]
 }

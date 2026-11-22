@@ -1,6 +1,6 @@
 {
   "id": "scientific-reasoning",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "title": "Scientific Reasoning: Correlation Is Not Causation",
   "category": "scientific-reasoning",
   "difficulty": "advanced",
@@ -54,6 +54,34 @@
       "fields": [
         "behavior",
         "supported"
+      ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "supported",
+      "expected": [
+        "Observed groups had different reported improvement proportions."
+      ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "not_established",
+      "expected": [
+        "That intervention X caused the difference.",
+        "Statistical significance or generalizability."
+      ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "traceability",
+      "path": "missing",
+      "expected": [
+        "Sample size",
+        "Confounder handling",
+        "Uncertainty interval",
+        "Study protocol"
       ]
     }
   ]
