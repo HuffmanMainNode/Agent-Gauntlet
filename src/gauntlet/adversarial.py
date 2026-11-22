@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 import random
 
+from .assertions import evaluate_assertions
+
 
 def build_case(suite: str, seed: int) -> dict:
     rng = random.Random(seed)
@@ -143,6 +145,9 @@ def evaluate_case(case: dict, response: dict) -> dict:
             set(claim["evidence_ids"]) == expected_refs
             for claim in claims
         )
+    assertion_results = evaluate_assertions(case.get("assertions", []), response)
+    if assertion_results:
+        behavior_pass = behavior_pass and all(item["passed"] for item in assertion_results)
     total_claims = len(raw_claims)
     precision = len(supported) / total_claims if total_claims else (1.0 if abstained else 0.0)
     return {"suite": case["suite"], "case_id": case["case_id"], "behavior_pass": behavior_pass,
@@ -151,5 +156,6 @@ def evaluate_case(case: dict, response: dict) -> dict:
             "abstained": abstained, "conflict_reported": conflict_reported,
             "turns_completed": len(turns) if case["required_behavior"] == "track_mutable_state" and valid_turns else 0,
             "score": round((50.0 if behavior_pass else 0.0) + 50.0 * precision, 2),
+            "assertions": assertion_results,
             "limitations": ["Evidence references establish traceability, not semantic truth.",
                             "This deterministic evaluator covers only the declared case contract."]}
