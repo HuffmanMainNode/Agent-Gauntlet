@@ -1,12 +1,12 @@
 """Interactive tool-loop-v1 protocol with deterministic, permission-gated mock tools."""
 from __future__ import annotations
-import hashlib, json, os, selectors, signal, subprocess, sys, tempfile, time, uuid
+import hashlib, json, os, selectors, signal, sys, tempfile, time, uuid
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
 from .containment import (ContainmentPolicy, ContainmentUnavailableError,
-                          spawn_contained_process, terminate_process_group, finish_process_group, resource)
+                          spawn_contained_process, finish_process_group, resource)
 
 PROTOCOL = "tool-loop-v1"
 MAX_TURNS = 32
@@ -306,7 +306,12 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
         finally:
             selector.close()
             returncode = finish_process_group(process)
-        containment_path.parent.mkdir(parents=True, exist_ok=True)\n        containment_path.write_text(\n            json.dumps(containment_report.to_dict(), sort_keys=True, indent=2) + "\\n",\n            encoding="utf-8",\n        )\n        transcript_bytes = json.dumps(
+        containment_path.parent.mkdir(parents=True, exist_ok=True)
+        containment_path.write_text(
+            json.dumps(containment_report.to_dict(), sort_keys=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        transcript_bytes = json.dumps(
             transcript, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode("utf-8")
         return {"protocol":PROTOCOL,"final_commit":final_commit,"transcript":transcript,
@@ -320,4 +325,5 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                               "stdout_truncated": stdout_truncated,
                               "stderr_truncated": stderr_truncated},
                 "transcript_sha256": hashlib.sha256(transcript_bytes).hexdigest(),
+                "run_id": run_id, "containment_report_path": str(containment_path),
                 "containment": containment_report.to_dict()}
