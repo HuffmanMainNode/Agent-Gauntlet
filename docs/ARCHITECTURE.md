@@ -1,21 +1,32 @@
 # Architecture
 
-The first implementation is deliberately local-first.
+Agent Gauntlet is local-first and offline-capable. The package runtime uses the Python 3.11+ standard library. The optional development test dependency is pytest.
 
-Challenge manifest + inert fixture -> bundled fixture adapter -> deterministic scorer -> evidence bundle -> offline verifier.
+## Implemented execution paths
 
-## Trust boundaries
-- Challenge data is parsed as data; it is not imported as Python.
-- The runner uses a hard-coded allowlist of bundled fixture agents.
-- No network calls, model API calls, shell commands, subprocesses, or participant code execution occur.
-- Evidence records an unsigned local run. SHA-256 protects integrity against post-generation modification, not authorship or honest execution.
+### Bundled fixture runner
+Challenge manifest and inert fixture data flow through a bundled fixture agent, deterministic scorer, evidence bundle writer, and offline verifier. The fixture runner does not execute participant code or call external model APIs.
 
-## Next gates
-1. Formal JSON Schemas for challenge and evidence formats.
-2. Adapter contract with explicit capability and permission declarations.
-3. Sandboxed external adapter process with resource limits and opt-in network policy.
-4. Detached signatures and key identity lifecycle.
-5. Independent verifier and cross-language test vectors.
-6. Federation format for independent result boards.
+### Local command adapter
+The adversarial runner invokes an operator-configured argument vector using Python subprocess with `shell=False`, a timeout, and a deliberately minimal environment. It sends one JSON task on stdin and expects one JSON object on stdout. Each seed is a separate process invocation. This is a **single-turn local subprocess contract**, not a remote adapter, persistent session, or sandbox.
 
-Huffman Protocol and Mesh Archivist integrations remain optional. The core runner must work without them.
+The local command adapter is implemented. It must not be described as secure isolation: the process retains the OS permissions and network access of its execution identity.
+
+## Evidence and trust boundaries
+- Challenge payloads are parsed as data, not imported as Python.
+- SHA-256 inventories detect payload changes relative to the manifest.
+- The evidence and scorecard formats are unsigned. A submitter can generate a fresh internally consistent bundle.
+- Deterministic case reconstruction and score recomputation validate evaluator consistency, not semantic truth or honest model execution.
+- Agent/model/version fields are operator declarations, not authenticated identities.
+- The evaluator is a narrow challenge contract, not a general-purpose hallucination detector.
+
+## Planned, separate milestones
+1. Multi-turn stateful adapter protocol with explicit frame sequencing, state-change events, turn limits, and recovery semantics.
+2. Defense-in-depth POSIX process controls, clearly labeled as best-effort containment and never as a hostile-code sandbox.
+3. Optional detached cryptographic signatures and documented key lifecycle.
+4. Deterministic semantic assertion primitives for exact values, numeric tolerances, allowed derivations, and source-to-claim constraints.
+5. Independent verifier test vectors and cross-language implementations.
+6. Federated publication and independent reproduction formats.
+
+## Integration policy
+Huffman Protocol, Mesh Archivist, and other projects may provide optional adapters or packaging integrations. The core runner must remain independently useful and have no mandatory runtime dependencies.
