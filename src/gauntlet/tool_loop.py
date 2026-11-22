@@ -5,7 +5,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from .containment import ContainmentPolicy, _limit_plan, _minimal_environment, resource
+from .containment import (ContainmentPolicy, ContainmentUnavailableError, _limit_plan,\n                          _minimal_environment, _probe_namespaces, resource)
 
 PROTOCOL = "tool-loop-v1"
 MAX_TURNS = 32
@@ -127,11 +127,15 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
     if not command or any(not isinstance(x, str) or not x for x in command):
         raise ValueError("command must be a non-empty argument vector")
     policy = policy or ContainmentPolicy(mode="best-effort", wall_time_ms=30000)
-    if policy.mode == "strict":
-        from .containment import _probe_namespaces, ContainmentUnavailableError
-        env_probe = _minimal_environment(0, tempfile.gettempdir())
-        if not _probe_namespaces(env_probe):
-            raise ContainmentUnavailableError("strict tool-loop isolation probe failed")
+    if policy.mode == "strict" and not policy.disable_network:
+        raise ValueError("strict mode requires disable_network=True")
+    env_probe = _minimal_environment(int(fixture.get("seed", 0)), tempfile.gettempdir())
+    namespaces_active = False
+    if policy.mode != "off" and policy.disable_network:
+        namespaces_active = _probe_namespaces(env_probe)
+    if policy.mode == "strict" and not namespaces_active:
+        raise ContainmentUnavailableError("strict tool-loop isolation probe failed")
+    if namespaces_active:
         command = ["unshare", "--user", "--map-root-user", "--net", "--pid", "--fork", "--", *command]
     allowed_tools = set(allowed_tools)
     with tempfile.TemporaryDirectory(prefix="gauntlet-tool-loop-") as cwd:
@@ -204,8 +208,8 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                             frame = json.loads(raw.decode("utf-8"))
                             if not isinstance(frame, dict) or frame.get("protocol") != PROTOCOL:
                                 raise ToolLoopProtocolError("invalid protocol frame")
-                            if frame.get("turn_index") != expected_turn:
-                                raise ToolLoopProtocolError(f"turn_index must be {expected_turn}")
+                            if type(frame.get("turn_index")) is not int or frame.get("turn_index") != expected_turn:
+                                raise ToolLoopProtocolError(f"turn_index must be integer {expected_turn}")
                             expected_turn += 1
                             if expected_turn > MAX_TURNS + 1:
                                 raise ToolLoopProtocolError("turn limit exceeded")
@@ -265,4 +269,13 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                 "denied_tool_calls":dict(sorted(denied.items())),"retry_loop_count":retry_loops,
                 "recovery_credit":recovery_credit,
                 "score_adjustment":recovery_credit-retry_loops*5-violations*100,
-                "turns":expected_turn-1,"stderr":stderr_bytes.decode("utf-8",errors="replace")}
+                "turns":expected_turn-1,"stderr":stderr_bytes.decode("utf-8",errors="replace"),
+                "containment": {
+                    "requested_mode": policy.mode,
+                    "effective_mode": ("rlimit_and_user_net_pid_ns" if namespaces_active
+                                       else "rlimit_only" if plan else "none"),
+                    "namespaces_active": {"user": namespaces_active, "net": namespaces_active,
+                                          "pid": namespaces_active},
+                    "filesystem_sandboxed": False,
+                    "host_os": sys.platform,
+                }}
