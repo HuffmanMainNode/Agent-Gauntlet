@@ -6,6 +6,7 @@ agent identity, truthful behavior, safe execution, or the semantic validity of r
 from __future__ import annotations
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -57,7 +58,9 @@ def _challenge_hashes(repo_root: Path) -> dict[str, str]:
         entries = []
         for filename in PACK_FILES:
             path = folder / filename
-            if path.is_file() and not path.is_symlink():
+            if path.is_symlink():
+                raise AttestationError(f"symlink in challenge pack: {path}")
+            if path.is_file():
                 entries.append({"path": filename, "sha256": digest(path.read_bytes())})
         hashes[folder.name] = digest(canonical_bytes(entries))
     return hashes
@@ -85,8 +88,12 @@ def build_provenance(bundle_paths: list[str], repo_root: str | Path | None = Non
             evidence = json.loads((bundle / "evidence.json").read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
             raise AttestationError(f"bundle has no readable evidence manifest: {bundle}") from exc
-        suite = str(evidence.get("suite") or evidence.get("challenge_id") or "bundle")
-        run_id = str(evidence.get("run_id") or digest((bundle / "evidence.json").read_bytes())[:16])
+        if not isinstance(evidence, dict):
+            raise AttestationError(f"evidence manifest must be an object: {bundle}")
+        raw_suite = str(evidence.get("suite") or evidence.get("challenge_id") or "bundle")
+        raw_run_id = str(evidence.get("run_id") or digest((bundle / "evidence.json").read_bytes())[:16])
+        suite = raw_suite if re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", raw_suite) and ".." not in raw_suite else "suite-" + digest(raw_suite.encode())[:16]
+        run_id = raw_run_id if re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", raw_run_id) and ".." not in raw_run_id else "run-" + digest(raw_run_id.encode())[:16]
         resolved_bundles.append((suite, run_id, bundle))
     for suite, run_id, bundle in sorted(resolved_bundles, key=lambda item: (item[0], item[1])):
         for path in sorted(bundle.rglob("*")):
@@ -128,6 +135,8 @@ def attestation_payload(provenance: dict[str, Any]) -> bytes:
         for name, value in pack_hashes.items()
     ):
         raise AttestationError("challenge_pack_hashes must map pack IDs to SHA-256 digests")
+    if provenance["root_algorithm"] != "sha256(sorted-path-hash-pairs-v1)":
+        raise AttestationError("unsupported provenance root algorithm")
     return canonical_bytes({
         "format": ATTESTATION_FORMAT,
         "repo_commit": provenance["repo_commit"],
@@ -139,8 +148,8 @@ def attestation_payload(provenance: dict[str, Any]) -> bytes:
 
 def sign_scorecard(scorecard: dict, private_key: str | Path, identity: str,
                    signature_path: str | Path, namespace: str = NAMESPACE) -> Path:
-    if not identity or not namespace:
-        raise AttestationError("signer identity and namespace are required")
+    if not identity or not namespace or len(identity) > 256 or not re.fullmatch(r"[A-Za-z0-9_.@+-]+", namespace):
+        raise AttestationError("valid signer identity and namespace are required")
     executable = shutil.which("ssh-keygen")
     if not executable:
         raise AttestationError("ssh-keygen is required for OpenSSH attestations")
@@ -153,10 +162,13 @@ def sign_scorecard(scorecard: dict, private_key: str | Path, identity: str,
     with tempfile.TemporaryDirectory(prefix="gauntlet-attest-") as directory:
         payload_file = Path(directory) / "attestation.json"
         payload_file.write_bytes(payload)
-        result = subprocess.run(
-            [executable, "-Y", "sign", "-f", str(key), "-n", namespace, str(payload_file)],
-            capture_output=True, text=True, timeout=30, check=False,
-        )
+        try:
+            result = subprocess.run(
+                [executable, "-Y", "sign", "-f", str(key), "-n", namespace, str(payload_file)],
+                capture_output=True, text=True, timeout=30, check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise AttestationError(f"ssh-keygen signing could not complete: {exc}") from exc
         generated = Path(str(payload_file) + ".sig")
         if result.returncode != 0 or not generated.is_file():
             raise AttestationError(f"ssh-keygen signing failed: {result.stderr.strip()}")
@@ -192,11 +204,14 @@ def verify_scorecard_signature(scorecard: dict, signature_path: str | Path,
     if not signature.is_file() or not signers.is_file():
         raise AttestationError("signature or allowed_signers file not found")
     payload = attestation_payload(scorecard.get("provenance", {}))
-    result = subprocess.run(
-        [executable, "-Y", "verify", "-f", str(signers), "-I", identity,
-         "-n", namespace, "-s", str(signature)],
-        input=payload, capture_output=True, timeout=30, check=False,
-    )
+    try:
+        result = subprocess.run(
+            [executable, "-Y", "verify", "-f", str(signers), "-I", identity,
+             "-n", namespace, "-s", str(signature)],
+            input=payload, capture_output=True, timeout=30, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise AttestationError(f"ssh-keygen verification could not complete: {exc}") from exc
     if result.returncode != 0:
         message = result.stderr.decode("utf-8", errors="replace").strip()
         raise AttestationError(f"OpenSSH signature verification failed: {message}")
