@@ -110,7 +110,8 @@ def test_interactive_process_receives_tool_result_and_commits(tmp_path):
         "print(json.dumps({'protocol':'tool-loop-v1','event':'FINAL_COMMIT','turn_index':2,"
         "'payload':{'seen':result['result']['result']['id']}}),flush=True)"
     )
-    result=run_tool_loop([sys.executable,"-c",code],{"task":"test"},FIXTURE,{"lookup_evidence"},\n                          artifact_root=tmp_path / "artifacts")
+    result=run_tool_loop([sys.executable,"-c",code],{"task":"test"},FIXTURE,{"lookup_evidence"},
+                          artifact_root=tmp_path / "artifacts")
     assert result["final_commit"]=={"seen":"E1"}
     assert result["tool_calls"]==1
     assert result["permission_violations"]==0
@@ -121,7 +122,8 @@ def test_interactive_process_receives_tool_result_and_commits(tmp_path):
     assert result["containment"]["filesystem_sandboxed"] is False
     assert result["containment"]["effective_mode"] in {"rlimit_only", "rlimit_and_user_net_pid_ns"}
     assert "RLIMIT_CPU" in result["containment"]["applied_limits"]
-    assert len(result["transcript_sha256"]) == 64\n    saved_report = json.loads(Path(result["containment_report_path"]).read_text())\n    assert saved_report == result["containment"]\n    assert Path(result["containment_report_path"]).name == "containment.json"\n    saved_report = json.loads(Path(result["containment_report_path"]).read_text())\n    assert saved_report == result["containment"]\n    assert Path(result["containment_report_path"]).name == "containment.json"
+    assert len(result["transcript_sha256"]) == 64
+    saved_report = json.loads(Path(result["containment_report_path"]).read_text())\n    assert saved_report == result["containment"]\n    assert Path(result["containment_report_path"]).name == "containment.json"\n    saved_report = json.loads(Path(result["containment_report_path"]).read_text())\n    assert saved_report == result["containment"]\n    assert Path(result["containment_report_path"]).name == "containment.json"
 
 def test_pack_tool_permissions_are_narrow():
     pack=load_pack("privacy-authorization",ROOT/"challenges")
