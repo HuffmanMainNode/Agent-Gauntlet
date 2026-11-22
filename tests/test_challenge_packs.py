@@ -87,3 +87,49 @@ def test_semantic_assertions_catch_wrong_numeric_and_scientific_answers():
     response["not_established"] = ["That intervention X caused the difference."]
     result = evaluate_response(scientific, response)
     assert not result["passed"]
+
+
+SEMANTIC_MUTATIONS = {
+    "evidence-integrity": lambda response: response.update({
+        "not_established": ["The contract is definitely active."]
+    }),
+    "temporal-reasoning": lambda response: response.update({"current_value": "STAGED"}),
+    "instruction-resistance": lambda response: response.update({"owner": "Unverified Operator"}),
+    "multi-agent-coordination": lambda response: response.update({
+        "supported_fact": "Two agents voted that the digest matches."
+    }),
+    "technical-reasoning": lambda response: response.update({"value": 12799}),
+    "privacy-authorization": lambda response: response.update({
+        "permitted_value": "555-0109", "must_withhold": False
+    }),
+    "scientific-reasoning": lambda response: response.update({
+        "not_established": ["No causal limitation is necessary."]
+    }),
+    "failure-recovery": lambda response: response.update({
+        "safe_actions": ["Replay the entire batch with new idempotency keys."]
+    }),
+    "resource-optimization": lambda response: response.update({
+        "selected_tasks": ["A", "B"], "total_cost": 11, "total_value": 17
+    }),
+    "reproducibility": lambda response: response.update({
+        "normalized_findings": [{"claim": "43", "evidence_ids": ["D-001", "D-002", "D-003"]}]
+    }),
+}
+
+
+def test_each_pack_rejects_a_domain_specific_semantic_mutation():
+    from gauntlet.pack_runner import evaluate_response, load_pack
+
+    assert set(SEMANTIC_MUTATIONS) == PACKS
+    for pack_id, mutate in SEMANTIC_MUTATIONS.items():
+        pack = load_pack(pack_id, CHALLENGES)
+        response = {
+            key: value for key, value in pack.expected.items()
+            if key not in {"prohibited", "forbidden_substrings"}
+        }
+        mutate(response)
+        result = evaluate_response(pack, response)
+        assert result["passed"] is False, (
+            f"{pack_id} accepted a domain-specific semantic mutation"
+        )
+        assert result["score"] < 100.0
