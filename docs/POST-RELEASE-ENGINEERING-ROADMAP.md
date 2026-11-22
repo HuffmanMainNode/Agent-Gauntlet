@@ -30,8 +30,8 @@ This roadmap separates confirmed repository state, current design limits, and th
 
 | Priority | Gap | Why it matters |
 |---|---|---|
-| P0 | Tool-loop containment parity | `run_tool_loop` applies resource limits and strict namespace enforcement, but its best-effort mode does not currently attempt the same namespace capability path as `run_contained`. The two execution paths should share one containment supervisor. |
-| P0 | Protocol/runtime parity tests | Keep live subprocess behavior and offline trace replay aligned for turn typing, frame limits, duplicate calls, FINAL_COMMIT handling, 403 accounting, and transient retry behavior. |
+| P0 | Tool-loop containment parity | **Partially addressed in PR #21:** best-effort mode now probes and uses Linux user/network/PID namespaces when available, strict mode remains fail-closed, and the live report exposes the effective capability. A shared supervisor and a structured report with confirmed per-limit values remain outstanding. |
+| P0 | Protocol/runtime parity tests | **Partially addressed in PR #21:** live and offline paths both require exact integer turn indices. PR #22 adds a shared stateful dispatcher for live and replay retry behavior. A single shared protocol validator and additional malformed-frame conformance vectors remain outstanding. |
 | P1 | Tool-loop evidence completeness | Persist a structured containment report, stdout/stderr truncation flags, timeout/exit status, and a canonical transcript digest alongside the tool-loop report. |
 | P1 | Pack-to-benchmark integration | The declarative pack evaluator scores supplied response JSON. It does not by itself create agent responses. Make the adapter execution path explicit and connect tool-loop sessions to a reproducible per-seed pack result pipeline. |
 | P1 | External evidence verification | The leaderboard validates signed claims and internal consistency. It does not retrieve evidence archives or replay remote runs. Add an optional evidence-bundle intake format with strict path, hash, size, and schema checks, then support independent replay. |
@@ -57,7 +57,7 @@ Do not add claims of filesystem isolation. Keep untrusted code out of the host p
 
 Use one protocol validator for live sessions and offline traces. Require exact integer turn indices (booleans must not pass as integers), unique call IDs, one outstanding call/result exchange, bounded frame size, exactly one final commit, and no frames after final commit.
 
-Make retry scoring explicit and deterministic. A repeated 403 should remain a permission violation and must never earn recovery credit. Transient 503 recovery credit should be capped and based on observed bounded retry frames, not merely a caller-supplied number in a tool argument.
+**Implemented in PR #22:** transient failures are fixture-controlled, bound to a stable operation ID, emitted one 503 per actual tool call, and capped by a retry budget. Recovery credit is awarded only after observed retries and successful completion; caller-supplied failure counts and result values are ignored. Repeated 403s remain permission violations. Retry-delay values are deterministic guidance, not proof of actual wall-clock waiting.
 
 ### Phase C: make challenge packs executable end-to-end
 
@@ -108,3 +108,8 @@ After the P0/P1 work is complete:
 - No claim that a signature proves agent honesty or truth.
 - No claim that temporary directories or POSIX resource limits constitute filesystem sandboxing.
 - No global ranking until external submissions and independent reproductions exist.
+
+
+## Audit closeout update
+
+PR #21 aligned best-effort namespace probing and exact turn-index typing. PR #22 replaced caller-controlled transient retry simulation with fixture-controlled, stateful retries and wired the observed adjustment into the pack CLI score. Both changes passed the Python 3.11/3.12/3.13 matrix on their final PR heads. The remaining P0 work is a shared containment supervisor and a single protocol validator, not the specific gaps corrected by those PRs.
