@@ -1,7 +1,7 @@
 # Post-release engineering roadmap
 
 **Audit date:** 22 November 2026  
-**Baseline:** `7bc986c5c77fd69269a7127d653ebb5f99807008`  
+**Baseline:** `fcf6a085bf01b75c58b71e7ceb6d8c56e56d5511`  
 **Scope:** Post-Commit 45 review of the public repository
 
 This roadmap separates confirmed repository state, current design limits, and the next engineering sequence. It is not a claim that planned work has already been implemented.
@@ -9,8 +9,8 @@ This roadmap separates confirmed repository state, current design limits, and th
 ## Current verified state
 
 - The Commit 39-45 sequence is merged to `main`.
-- PR #24 (unified execution supervisor), PR #25 (shared live/replay protocol validator), PR #26 (seeded pack-run evidence pipeline), and PR #27 (schema validation in CI) are merged to `main`.
-- The final PR #24, #25, #26, and #27 revisions passed the Python 3.11, 3.12, and 3.13 CI matrix. PR #26 also passed the leaderboard submission gate; PR #27 adds generated reference-baseline schema validation to the 3.11 CI job.
+- PR #24 (unified execution supervisor), PR #25 (shared live/replay protocol validator), PR #26 (seeded pack-run evidence pipeline), PR #27 (schema validation in CI), PR #29 (deterministic seed-derived evidence-order variants), PR #30 (semantic assertions v1.1.0), and PR #31 (ten-domain semantic mutation tests) are merged to `main`.
+- The final PR #24-#27 and #29-#31 revisions passed the Python 3.11, 3.12, and 3.13 CI matrix. PR #26 and PR #29 also passed the leaderboard submission gate; PR #27 validates the generated reference baseline against its schema in the 3.11 CI job.
 - The signed-scorecard-claims correction from PR #18 is merged. Its tampering regression test and leaderboard gate passed; the full Python 3.11, 3.12, and 3.13 CI matrix passed on the merged revision.
 - The latest main CI matrix and leaderboard workflow passed.
 - At the PR #27 merged snapshot, there were no open issues or pull requests; subsequent engineering work is tracked through reviewable pull requests.
@@ -35,7 +35,8 @@ This roadmap separates confirmed repository state, current design limits, and th
 | P0 | Tool-loop containment parity | **Implemented in PR #24:** `run_contained` and `run_tool_loop` share child launch, environment scrubbing, namespace preflight, exact child-confirmed resource limits, and process-group cleanup. Tool-loop runs persist `containment.json` plus `execution.json`; successful result records include a canonical transcript digest. Remaining follow-up is cross-platform capability coverage and durable transcript artifacts for failed sessions. |
 | P0 | Protocol/runtime parity tests | **Implemented in PR #25:** live JSONL sessions and offline replay use one `ProtocolValidator` for turn order, exact integer types, unique call IDs, frame bounds, protocol markers, and terminal final commits. Legacy offline traces may omit the marker; incorrect or explicit-null markers are rejected. |
 | P1 | Tool-loop evidence completeness | **Partially implemented in PR #26:** completed pack runs bind transcript digests, containment reports, and execution records to each seed. Failed attempts retain bounded error records and any containment/execution artifacts written before failure. A protocol failure can still occur before a complete transcript is returned; durable partial transcript and bounded stdout/stderr capture for failed sessions remain follow-up work. |
-| P1 | Pack-to-benchmark integration | **Implemented in PR #26 with a disclosed limitation:** `pack-run` executes a trusted local `tool-loop-v1` adapter across explicit seeds, evaluates final commits, and writes verifiable evidence bundles. Current fixtures are fixed; the seed is injected into fixture metadata but does not generate new fixture content. Seed-derived challenge variation remains outstanding. |
+| P1 | Pack-to-benchmark integration | **Implemented in PR #26 and extended in PR #29:** `pack-run` executes a trusted local `tool-loop-v1` adapter across explicit seeds, evaluates final commits, and writes verifiable evidence bundles. Each seed now deterministically permutes existing synthetic evidence records using a SHA-256 sort key. Evidence content is preserved; finite permutations can repeat. Domain-specific content generation remains outstanding. |
+| P1 | Semantic assertion adequacy | **Strengthened in PR #30 and regression-tested in PR #31:** all ten packs now assert domain-critical response content, every reference oracle passes, and one semantic mutation per domain is required to fail with a score below 100. Broader adversarial mutation families and assertion-boundary tests remain useful follow-up work. |
 | P1 | External evidence verification | The leaderboard validates signed claims and internal consistency. It does not retrieve evidence archives or replay remote runs. Add an optional evidence-bundle intake format with strict path, hash, size, and schema checks, then support independent replay. |
 | P2 | Cross-platform containment matrix | The current containment contract is POSIX-focused and CI tests Linux. Add a documented capability matrix and run tests on additional supported POSIX platforms; strict mode must continue to fail closed. |
 | P2 | Schema enforcement in CI | **Implemented in PR #27:** all declarative challenge manifests, generated GRI output, generated scorecards, and the generated reference baseline are validated against Draft 2020-12 schemas. `jsonschema` is development-only; runtime dependencies remain empty. |
@@ -65,7 +66,7 @@ Use one protocol validator for live sessions and offline traces. Require exact i
 
 ### Phase C: make challenge packs executable end-to-end
 
-**Initial local execution/evidence pipeline implemented and merged in PR #26.** The `pack-run` and `verify-pack-run` commands provide per-pack, per-seed records. Current seed semantics are deliberately limited: each seed is injected into a fixed synthetic fixture, while fixture payload content remains unchanged. The next Phase C increment must add genuine deterministic fixture generation from seed values and a documented adapter identity/reproduction contract.
+**Initial local execution/evidence pipeline implemented and merged in PR #26; deterministic presentation variants added in PR #29.** The `pack-run` and `verify-pack-run` commands provide per-pack, per-seed records. Each seed now orders the existing evidence records using a seed-scoped SHA-256 key. Evidence contents and identifiers remain unchanged; finite evidence sets mean different seeds may share a permutation. The next Phase C increment is domain-specific content variation with updated expected oracles and assertion contracts, not synthetic changes to evidence without matching scoring rules.
 
 The implemented runner records:
 - hash-bound challenge and per-seed fixture artifacts;
@@ -76,7 +77,7 @@ The implemented runner records:
 - explicit permission/injection flags;
 - canonical evidence manifest.
 
-The runner preserves failed attempts and their available containment/execution artifacts. Next, add seed-derived fixture variants, a reproducible adapter descriptor that does not leak credentials, bounded parallelism only after deterministic ordering is proven, and a machine-readable coverage report for all ten domains.
+The runner preserves failed attempts and their available containment/execution artifacts. Next, add pack-specific content variants with matching oracle/assertion updates, a reproducible adapter descriptor that does not leak credentials, bounded parallelism only after deterministic ordering is proven, and a machine-readable coverage report for all ten domains.
 
 ### Phase D: federated evidence intake and independent replay
 
@@ -118,4 +119,4 @@ After the P0/P1 work is complete:
 
 ## Audit closeout update
 
-PR #21 aligned best-effort namespace probing and exact turn-index typing. PR #22 replaced caller-controlled transient retry simulation with fixture-controlled, stateful retries and wired the observed adjustment into the pack CLI score. PR #24 completed the unified containment supervisor; PR #25 completed shared live/replay protocol validation; PR #26 added a verifiable per-seed pack execution pipeline; PR #27 made challenge, GRI, scorecard, and reference-baseline schemas enforceable in CI. All four final PR heads passed the Python 3.11/3.12/3.13 matrix. The P0 execution and protocol milestones are closed. The next material engineering gap is real seed-derived challenge generation, followed by failed-session partial transcript preservation and independent evidence intake/replay.
+PR #21 aligned best-effort namespace probing and exact turn-index typing. PR #22 replaced caller-controlled transient retry simulation with fixture-controlled, stateful retries and wired the observed adjustment into the pack CLI score. PR #24 completed the unified containment supervisor; PR #25 completed shared live/replay protocol validation; PR #26 added a verifiable per-seed pack execution pipeline; PR #27 made challenge, GRI, scorecard, and reference-baseline schemas enforceable in CI. All four final PR heads passed the Python 3.11/3.12/3.13 matrix. The P0 execution and protocol milestones are closed. PR #29 adds deterministic evidence-order variation; PR #30 strengthens semantic scoring contracts to v1.1.0; PR #31 requires one semantic mutation regression per domain. The next material gaps are pack-specific content variants with synchronized oracles, failed-session partial transcript preservation, cross-platform containment coverage, and independent evidence intake/replay.
