@@ -24,12 +24,13 @@
         "suite_count": {"type": "integer", "minimum": 1},
         "case_count": {"type": "integer", "minimum": 1},
         "suites": {"type": "object", "minProperties": 1, "additionalProperties": {
-          "type": "object", "required": ["cases", "behavior_pass_rate", "mean_case_score", "unsupported_claims", "malformed_claims", "abstention_rate", "conflict_reports"],
+          "type": "object", "required": ["cases", "behavior_pass_rate", "mean_case_score", "unsupported_claims", "execution_failures", "malformed_claims", "abstention_rate", "conflict_reports"],
           "properties": {
             "cases": {"type": "integer", "minimum": 1},
             "behavior_pass_rate": {"type": "number", "minimum": 0, "maximum": 1},
             "mean_case_score": {"type": "number", "minimum": 0, "maximum": 100},
             "unsupported_claims": {"type": "integer", "minimum": 0},
+            "execution_failures": {"type": "integer", "minimum": 0},
             "malformed_claims": {"type": "integer", "minimum": 0},
             "abstention_rate": {"type": "number", "minimum": 0, "maximum": 1},
             "conflict_reports": {"type": "integer", "minimum": 0}
