@@ -107,6 +107,7 @@ def build_provenance(bundle_paths: list[str], repo_root: str | Path | None = Non
                     "sha256": digest(path.read_bytes()),
                 })
     pack_result_count = 0
+    pack_result_hashes = []
     for raw in additional_files or []:
         candidate = Path(raw)
         if candidate.is_symlink() or not candidate.is_file():
@@ -121,10 +122,14 @@ def build_provenance(bundle_paths: list[str], repo_root: str | Path | None = Non
         pack_id = result["pack_id"]
         if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", pack_id) or pack_id not in packs:
             raise AttestationError("additional provenance file has an unknown or invalid pack_id")
+        canonical_result = canonical_bytes(result)
+        result_hash = digest(canonical_result)
         raw_seed = str(result.get("seed", "unspecified"))
         seed = raw_seed if re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", raw_seed) and ".." not in raw_seed else "seed-" + digest(raw_seed.encode())[:16]
-        entries.append({"path": f"pack-results/{pack_id}/seed-{seed}/{digest(raw_bytes)}.json",
-                        "sha256": digest(raw_bytes)})
+        entries.append({"path": f"pack-results/{pack_id}/seed-{seed}/{result_hash}.json",
+                        "sha256": result_hash})
+        pack_result_hashes.append({"pack_id": pack_id, "seed": result.get("seed", "unspecified"),
+                                    "sha256": result_hash})
         pack_result_count += 1
     entries.sort(key=lambda item: item["path"])
     if len({item["path"] for item in entries}) != len(entries):
@@ -136,13 +141,13 @@ def build_provenance(bundle_paths: list[str], repo_root: str | Path | None = Non
         "bundle_root_sha256": root_hash,
         "bundle_file_count": sum(1 for item in entries if item["path"].startswith("bundles/")),
         "challenge_pack_count": len(packs),
-        "pack_result_count": pack_result_count,
+        "pack_result_count": pack_result_count,\n        "pack_result_hashes": sorted(pack_result_hashes, key=lambda item: (item["pack_id"], str(item["seed"]), item["sha256"])),
         "root_algorithm": "sha256(sorted-path-hash-pairs-v1)",
     }
 
 
 def attestation_payload(provenance: dict[str, Any]) -> bytes:
-    required = {"repo_commit", "challenge_pack_hashes", "bundle_root_sha256", "root_algorithm", "pack_result_count"}
+    required = {"repo_commit", "challenge_pack_hashes", "bundle_root_sha256", "root_algorithm", "pack_result_count", "pack_result_hashes"}
     if not isinstance(provenance, dict) or not required <= provenance.keys():
         raise AttestationError("provenance is incomplete")
     root_hash = provenance["bundle_root_sha256"]
@@ -165,7 +170,7 @@ def attestation_payload(provenance: dict[str, Any]) -> bytes:
         "challenge_pack_hashes": provenance["challenge_pack_hashes"],
         "bundle_root_sha256": root_hash,
         "root_algorithm": provenance["root_algorithm"],
-        "pack_result_count": provenance["pack_result_count"],
+        "pack_result_count": provenance["pack_result_count"],\n        "pack_result_hashes": provenance["pack_result_hashes"],
     })
 
 
