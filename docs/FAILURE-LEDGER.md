@@ -80,3 +80,14 @@ Never mark a failure closed merely because a later unrelated CI run is green.
 - **Historical failed workflows:** [45018387153](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45018387153), [45018390260](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45018390260), [45018413453](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45018413453), [45018416413](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45018416413), and [45018435417](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45018435417) all exposed this same defect while the branch was being developed.
 - **Verification:** The corrected branch passed the complete Python 3.11/3.12/3.13 matrix in [workflow 45018506152](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45018506152), and PR #8 was merged as `e4b8dfb7b127d4c0bfc8b11a54d42588e70aa5b6`.
 - **Disposition:** Closed by correction, regression test, and passing cross-version CI. Historical failed workflows remain available as evidence.
+
+
+## Entry FG-2026-11-22-007: detached signature did not bind public scorecard claims
+
+- **Observed:** The OpenSSH payload committed the provenance root and embedded pack-result hashes, but scorecard fields used by the leaderboard gate (suite summaries, seed inventories, GRI disclosure, and evidence references) were outside that signed payload.
+- **Impact:** A scorecard editor could alter those public claims and recalculate the ordinary scorecard checksum without changing the detached signature's signed provenance payload. This weakened the integrity boundary of federated admission.
+- **Detection:** Post-release source audit of `attestation.py`, `leaderboard.py`, and the scorecard schema on 22 November 2026.
+- **Correction in progress:** Add a canonical `scorecard_claims_sha256` to provenance, include it in the OpenSSH payload, verify it before admission, require it in the schema, and reconcile each suite's declared case count against its unique seed inventory.
+- **Regression coverage:** Add a signed-scorecard tampering test that changes a suite pass rate and recomputes the ordinary scorecard checksum. The leaderboard gate must still reject the modified scorecard.
+- **Verification:** The final PR branch passed the complete Python 3.11/3.12/3.13 test matrix in [workflow 45054991877](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45054991877). The leaderboard submission gate passed in [workflow 45054997644](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45054997644). The signed-claim tampering regression test passed.
+- **Disposition:** Closed by PR #18 after the final cross-version CI matrix and leaderboard gate passed. Earlier red CI attempts remain in Actions as preserved development history.

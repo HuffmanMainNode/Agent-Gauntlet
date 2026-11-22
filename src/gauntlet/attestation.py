@@ -147,8 +147,23 @@ def build_provenance(bundle_paths: list[str], repo_root: str | Path | None = Non
     }
 
 
+def scorecard_claims_digest(scorecard: dict[str, Any]) -> str:
+    """Digest every public scorecard claim except mutable signature/self-hash metadata."""
+    if not isinstance(scorecard, dict):
+        raise AttestationError("scorecard must be an object")
+    excluded = {"attestation", "scorecard_sha256"}
+    claims = {key: value for key, value in scorecard.items() if key not in excluded}
+    provenance = claims.get("provenance")
+    if isinstance(provenance, dict):
+        provenance = dict(provenance)
+        provenance.pop("scorecard_claims_sha256", None)
+        claims["provenance"] = provenance
+    return digest(canonical_bytes(claims))
+
+
 def attestation_payload(provenance: dict[str, Any]) -> bytes:
-    required = {"repo_commit", "challenge_pack_hashes", "bundle_root_sha256", "root_algorithm", "pack_result_count", "pack_result_hashes"}
+    required = {"repo_commit", "challenge_pack_hashes", "bundle_root_sha256", "root_algorithm",
+                "pack_result_count", "pack_result_hashes", "scorecard_claims_sha256"}
     if not isinstance(provenance, dict) or not required <= provenance.keys():
         raise AttestationError("provenance is incomplete")
     root_hash = provenance["bundle_root_sha256"]
@@ -163,6 +178,10 @@ def attestation_payload(provenance: dict[str, Any]) -> bytes:
         for name, value in pack_hashes.items()
     ):
         raise AttestationError("challenge_pack_hashes must map pack IDs to SHA-256 digests")
+    claims_hash = provenance["scorecard_claims_sha256"]
+    if (not isinstance(claims_hash, str) or len(claims_hash) != 64
+            or any(char not in "0123456789abcdef" for char in claims_hash)):
+        raise AttestationError("scorecard_claims_sha256 must be a lowercase SHA-256 digest")
     if provenance["root_algorithm"] != "sha256(sorted-path-hash-pairs-v1)":
         raise AttestationError("unsupported provenance root algorithm")
     result_hashes = provenance["pack_result_hashes"]
@@ -180,6 +199,7 @@ def attestation_payload(provenance: dict[str, Any]) -> bytes:
         "repo_commit": provenance["repo_commit"],
         "challenge_pack_hashes": provenance["challenge_pack_hashes"],
         "bundle_root_sha256": root_hash,
+        "scorecard_claims_sha256": claims_hash,
         "root_algorithm": provenance["root_algorithm"],
         "pack_result_count": provenance["pack_result_count"],
         "pack_result_hashes": provenance["pack_result_hashes"],
@@ -196,7 +216,10 @@ def sign_scorecard(scorecard: dict, private_key: str | Path, identity: str,
     key = Path(private_key).expanduser().resolve()
     if not key.is_file():
         raise AttestationError(f"private key not found: {key}")
-    payload = attestation_payload(scorecard.get("provenance", {}))
+    provenance = scorecard.get("provenance", {})
+    if provenance.get("scorecard_claims_sha256") != scorecard_claims_digest(scorecard):
+        raise AttestationError("scorecard claims do not match the provenance claim digest")
+    payload = attestation_payload(provenance)
     destination = Path(signature_path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="gauntlet-attest-") as directory:
@@ -243,7 +266,10 @@ def verify_scorecard_signature(scorecard: dict, signature_path: str | Path,
     signers = Path(allowed_signers).expanduser().resolve()
     if not signature.is_file() or not signers.is_file():
         raise AttestationError("signature or allowed_signers file not found")
-    payload = attestation_payload(scorecard.get("provenance", {}))
+    provenance = scorecard.get("provenance", {})
+    if provenance.get("scorecard_claims_sha256") != scorecard_claims_digest(scorecard):
+        raise AttestationError("scorecard claims do not match signed provenance digest")
+    payload = attestation_payload(provenance)
     try:
         result = subprocess.run(
             [executable, "-Y", "verify", "-f", str(signers), "-I", identity,

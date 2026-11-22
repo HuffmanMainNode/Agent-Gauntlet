@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .runner import canonical_bytes, digest, verify
-from .attestation import build_provenance, verify_scorecard_signature, NAMESPACE, AttestationError
+from .attestation import (build_provenance, verify_scorecard_signature, scorecard_claims_digest, NAMESPACE, AttestationError)
 from .gri import build_gri, DEFAULT_DOMAINS
 
 
@@ -90,6 +90,7 @@ def build_scorecard(bundle_paths: list[str], agent_name: str, model_id: str,
             "Results are self-reported until independently reproduced.",
         ],
     }
+    scorecard["provenance"]["scorecard_claims_sha256"] = scorecard_claims_digest(scorecard)
     scorecard["scorecard_sha256"] = hashlib.sha256(canonical_bytes(scorecard)).hexdigest()
     return scorecard
 
@@ -122,6 +123,8 @@ def verify_scorecard(path: str, signature_path: str | None = None,
     provenance = scorecard.get("provenance", {})
     if not isinstance(provenance, dict):
         raise ValueError("Scorecard provenance must be an object")
+    if provenance.get("scorecard_claims_sha256") != scorecard_claims_digest(scorecard):
+        raise ValueError("Scorecard claims do not match signed provenance digest")
     if provenance.get("pack_result_count") != len(pack_results):
         raise ValueError("Scorecard pack-result count does not match provenance")
     from .runner import digest
@@ -196,11 +199,18 @@ def verify_leaderboard_directory(directory: str, allowed_signers: str,
         )
         benchmark = card.get("benchmark", {})
         suites = benchmark.get("suites", {}) if isinstance(benchmark, dict) else {}
-        if not isinstance(suites, dict) or set(REQUIRED_LEADERBOARD_SUITES) - suites.keys():
-            raise ValueError(f"submission {path.name} does not cover all required suites")
+        if (not isinstance(suites, dict) or set(suites) != set(REQUIRED_LEADERBOARD_SUITES)
+                or benchmark.get("suite_count") != len(REQUIRED_LEADERBOARD_SUITES)
+                or benchmark.get("case_count") != sum(
+                    item.get("cases", -1) for item in suites.values() if isinstance(item, dict)
+                )):
+            raise ValueError(f"submission {path.name} does not have a consistent complete suite inventory")
         evidence_refs = card.get("evidence", [])
-        if not isinstance(evidence_refs, list):
-            raise ValueError(f"submission {path.name} has malformed evidence references")
+        if (not isinstance(evidence_refs, list)
+                or {item.get("suite") for item in evidence_refs if isinstance(item, dict)}
+                   != set(REQUIRED_LEADERBOARD_SUITES)
+                or len(evidence_refs) != len(REQUIRED_LEADERBOARD_SUITES)):
+            raise ValueError(f"submission {path.name} has incomplete or malformed evidence references")
         seeds_by_suite = {}
         for reference in evidence_refs:
             if not isinstance(reference, dict) or reference.get("suite") in seeds_by_suite:
@@ -213,6 +223,7 @@ def verify_leaderboard_directory(directory: str, allowed_signers: str,
         for name in REQUIRED_LEADERBOARD_SUITES:
             if (not isinstance(suites[name], dict) or type(suites[name].get("cases")) is not int
                     or suites[name]["cases"] < minimum_seeds
+                    or len(seeds_by_suite.get(name, [])) != suites[name]["cases"]
                     or len(seeds_by_suite.get(name, [])) < minimum_seeds):
                 raise ValueError(f"submission {path.name} has fewer than {minimum_seeds} unique seeds in a required suite")
         gri = card.get("gri", {})
