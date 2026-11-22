@@ -1,12 +1,12 @@
 """Interactive tool-loop-v1 protocol with deterministic, permission-gated mock tools."""
 from __future__ import annotations
-import json, os, selectors, signal, subprocess, sys, tempfile, time
+import hashlib, json, os, selectors, signal, sys, tempfile, time, uuid
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from .containment import (ContainmentPolicy, ContainmentUnavailableError, _limit_plan,
-                          _minimal_environment, _probe_namespaces, resource)
+from .containment import (ContainmentPolicy, ContainmentUnavailableError,
+                          spawn_contained_process, finish_process_group, resource)
 
 PROTOCOL = "tool-loop-v1"
 MAX_TURNS = 32
@@ -168,7 +168,8 @@ def evaluate_trace(frames: list[dict], fixture: dict, allowed_tools: set[str]) -
 
 
 def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: set[str],
-                  policy: ContainmentPolicy | None = None) -> dict:
+                  policy: ContainmentPolicy | None = None,
+                  artifact_root: str | Path = "artifacts") -> dict:
     """Interact with a persistent JSONL agent process until FINAL_COMMIT or a hard limit.
 
     Child code remains operator-trusted. This uses POSIX resource limits and process
@@ -181,25 +182,12 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
     policy = policy or ContainmentPolicy(mode="best-effort", wall_time_ms=30000)
     if policy.mode == "strict" and not policy.disable_network:
         raise ValueError("strict mode requires disable_network=True")
-    env_probe = _minimal_environment(int(fixture.get("seed", 0)), tempfile.gettempdir())
-    namespaces_active = False
-    if policy.mode != "off" and policy.disable_network:
-        namespaces_active = _probe_namespaces(env_probe)
-    if policy.mode == "strict" and not namespaces_active:
-        raise ContainmentUnavailableError("strict tool-loop isolation probe failed")
-    if namespaces_active:
-        command = ["unshare", "--user", "--map-root-user", "--net", "--pid", "--fork", "--", *command]
     allowed_tools = set(allowed_tools)
+    run_id = uuid.uuid4().hex
+    containment_path = Path(artifact_root) / run_id / "containment.json"
     with tempfile.TemporaryDirectory(prefix="gauntlet-tool-loop-") as cwd:
-        env = _minimal_environment(int(fixture.get("seed", 0)), cwd)
-        plan = _limit_plan(policy) if policy.mode != "off" else {}
-        def apply_limits():
-            for name, limits in plan.items():
-                resource.setrlimit(getattr(resource, name), limits)
-        process = subprocess.Popen(
-            command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            cwd=cwd, env=env, shell=False, close_fds=True, start_new_session=True,
-            preexec_fn=apply_limits if plan else None, bufsize=0,
+        process, containment_report = spawn_contained_process(
+            command, policy, int(fixture.get("seed", 0)), cwd
         )
         assert process.stdin and process.stdout and process.stderr
         selector = selectors.DefaultSelector()
@@ -215,7 +203,9 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
         pending_offset = 0
         buffer = bytearray()
         stderr_bytes = bytearray()
+        stderr_truncated = False
         total_output = 0
+        stdout_truncated = False
         transcript = []
         call_ids = set()
         denied = Counter()
@@ -224,6 +214,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
         dispatcher = ToolDispatcher(fixture, allowed_tools)
         expected_turn = 1
         final_commit = None
+        timed_out = False
         deadline = time.monotonic() + policy.wall_time_ms / 1000
         try:
             while time.monotonic() < deadline:
@@ -246,10 +237,14 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                         if key.data == "stderr":
                             capacity = max(0, policy.max_stderr_bytes - len(stderr_bytes))
                             stderr_bytes.extend(chunk[:capacity])
+                            if len(chunk) > capacity:
+                                stderr_truncated = True
                             continue
-                        total_output += len(chunk)
-                        if total_output > policy.max_stdout_bytes:
+                        capacity = max(0, policy.max_stdout_bytes - total_output)
+                        if len(chunk) > capacity:
+                            stdout_truncated = True
                             raise ToolLoopProtocolError("agent output exceeded configured byte limit")
+                        total_output += len(chunk)
                         buffer.extend(chunk)
                         while b"\n" in buffer:
                             raw, _, remainder = buffer.partition(b"\n")
@@ -308,6 +303,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                 if final_commit is not None:
                     break
             if final_commit is None:
+                timed_out = time.monotonic() >= deadline
                 raise TimeoutError("tool-loop timed out or exited without FINAL_COMMIT")
         except Exception:
             try: os.killpg(process.pid, signal.SIGKILL)
@@ -315,22 +311,35 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
             raise
         finally:
             selector.close()
-            if process.poll() is None:
-                try: os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError: pass
-            process.wait()
+            returncode = finish_process_group(process)
+            containment_path.parent.mkdir(parents=True, exist_ok=True)
+            containment_path.write_text(
+                json.dumps(containment_report.to_dict(), sort_keys=True, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            execution_record = {
+                "returncode": returncode, "timed_out": timed_out,
+                "stdout_bytes": total_output, "stderr_bytes": len(stderr_bytes),
+                "stdout_truncated": stdout_truncated,
+                "stderr_truncated": stderr_truncated,
+            }
+            (containment_path.parent / "execution.json").write_text(
+                json.dumps(execution_record, sort_keys=True, indent=2) + "\n",
+                encoding="utf-8",
+            )
+        transcript_bytes = json.dumps(
+            transcript, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
         return {"protocol":PROTOCOL,"final_commit":final_commit,"transcript":transcript,
                 "tool_calls":len(transcript),"permission_violations":violations,
                 "denied_tool_calls":dict(sorted(denied.items())),"retry_loop_count":retry_loops,
                 "recovery_credit":recovery_credit,"unrecovered_operations":dispatcher.unresolved_operations(),
                 "score_adjustment":recovery_credit-retry_loops*5-violations*100-len(dispatcher.unresolved_operations())*10,
                 "turns":expected_turn-1,"stderr":stderr_bytes.decode("utf-8",errors="replace"),
-                "containment": {
-                    "requested_mode": policy.mode,
-                    "effective_mode": ("rlimit_and_user_net_pid_ns" if namespaces_active
-                                       else "rlimit_only" if plan else "none"),
-                    "namespaces_active": {"user": namespaces_active, "net": namespaces_active,
-                                          "pid": namespaces_active},
-                    "filesystem_sandboxed": False,
-                    "host_os": sys.platform,
-                }}
+                "execution": {"returncode": returncode, "timed_out": timed_out,
+                              "stdout_bytes": total_output, "stderr_bytes": len(stderr_bytes),
+                              "stdout_truncated": stdout_truncated,
+                              "stderr_truncated": stderr_truncated},
+                "transcript_sha256": hashlib.sha256(transcript_bytes).hexdigest(),
+                "run_id": run_id, "containment_report_path": str(containment_path),
+                "containment": containment_report.to_dict()}

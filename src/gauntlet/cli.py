@@ -128,10 +128,12 @@ def main():
                 raise ValueError("--timeout must be between 1 and 300 seconds")
             challenge = load_pack(args.name)
             permissions = challenge.manifest["permissions"]
+            output = Path(args.output)
             result = run_tool_loop(command, challenge.fixture, challenge.fixture,
                                    set(permissions["tools"]),
                                    ContainmentPolicy(mode="best-effort", wall_time_ms=args.timeout * 1000,
-                                                     max_stdout_bytes=challenge.manifest["limits"]["max_output_bytes"]))
+                                                     max_stdout_bytes=challenge.manifest["limits"]["max_output_bytes"]),
+                                   artifact_root=output / "artifacts")
             evaluation = evaluate_response(challenge, result["final_commit"])
             evaluation["base_score"] = evaluation["score"]
             evaluation["tool_loop_adjustment"] = result["score_adjustment"]

@@ -30,7 +30,7 @@ This roadmap separates confirmed repository state, current design limits, and th
 
 | Priority | Gap | Why it matters |
 |---|---|---|
-| P0 | Tool-loop containment parity | **Partially addressed in PR #21:** best-effort mode now probes and uses Linux user/network/PID namespaces when available, strict mode remains fail-closed, and the live report exposes the effective capability. A shared supervisor and a structured report with confirmed per-limit values remain outstanding. |
+| P0 | Tool-loop containment parity | **Implemented in the unified execution supervisor branch:** `run_contained` and `run_tool_loop` share child launch, environment scrubbing, namespace preflight, exact child-confirmed resource limits, and process-group cleanup. Tool-loop runs persist `containment.json` plus `execution.json`; successful result records include a canonical transcript digest. Remaining follow-up is cross-platform capability coverage and durable transcript artifacts for failed sessions. |
 | P0 | Protocol/runtime parity tests | **Partially addressed in PR #21:** live and offline paths both require exact integer turn indices. PR #22 adds a shared stateful dispatcher for live and replay retry behavior. A single shared protocol validator and additional malformed-frame conformance vectors remain outstanding. |
 | P1 | Tool-loop evidence completeness | Persist a structured containment report, stdout/stderr truncation flags, timeout/exit status, and a canonical transcript digest alongside the tool-loop report. |
 | P1 | Pack-to-benchmark integration | The declarative pack evaluator scores supplied response JSON. It does not by itself create agent responses. Make the adapter execution path explicit and connect tool-loop sessions to a reproducible per-seed pack result pipeline. |
@@ -43,13 +43,13 @@ This roadmap separates confirmed repository state, current design limits, and th
 
 ### Phase A: unify the execution supervisor
 
-Create a single internal supervisor used by both adversarial adapters and tool-loop agents. It should own:
+**Implemented in PR #24; the Python 3.11/3.12/3.13 matrix and 25-seed reference workflow passed. Pending review and merge.** The shared `spawn_contained_process` and process-group lifecycle helpers are now used by both adversarial adapters and interactive tool-loop agents. The supervisor owns:
 - environment construction and temporary working directories;
 - resource limit application and post-application confirmation;
 - namespace preflight and best-effort/strict behavior;
 - process-group lifecycle, timeout cleanup, and reaping;
 - bounded stdout/stderr readers and explicit truncation metadata;
-- one serialized containment report format.
+- one serialized containment report format. Tool-loop sessions additionally write a run-scoped execution record with exit status, timeout state, output byte counts, and truncation flags.
 
 Do not add claims of filesystem isolation. Keep untrusted code out of the host process unless an independently maintained OS sandbox is configured.
 

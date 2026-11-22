@@ -110,10 +110,24 @@ def test_interactive_process_receives_tool_result_and_commits(tmp_path):
         "print(json.dumps({'protocol':'tool-loop-v1','event':'FINAL_COMMIT','turn_index':2,"
         "'payload':{'seen':result['result']['result']['id']}}),flush=True)"
     )
-    result=run_tool_loop([sys.executable,"-c",code],{"task":"test"},FIXTURE,{"lookup_evidence"})
+    result=run_tool_loop([sys.executable,"-c",code],{"task":"test"},FIXTURE,{"lookup_evidence"},
+                          artifact_root=tmp_path / "artifacts")
     assert result["final_commit"]=={"seen":"E1"}
     assert result["tool_calls"]==1
     assert result["permission_violations"]==0
+    assert result["execution"]["returncode"] == 0
+    assert result["execution"]["timed_out"] is False
+    assert result["execution"]["stdout_truncated"] is False
+    assert result["execution"]["stderr_truncated"] is False
+    assert result["containment"]["filesystem_sandboxed"] is False
+    assert result["containment"]["effective_mode"] in {"rlimit_only", "rlimit_and_user_net_pid_ns"}
+    assert "RLIMIT_CPU" in result["containment"]["applied_limits"]
+    assert len(result["transcript_sha256"]) == 64
+    saved_report = json.loads(Path(result["containment_report_path"]).read_text())
+    assert saved_report == result["containment"]
+    assert Path(result["containment_report_path"]).name == "containment.json"
+    execution_record = json.loads((Path(result["containment_report_path"]).parent / "execution.json").read_text())
+    assert execution_record == result["execution"]
 
 def test_pack_tool_permissions_are_narrow():
     pack=load_pack("privacy-authorization",ROOT/"challenges")
@@ -159,9 +173,9 @@ def test_live_session_rejects_boolean_turn_index():
 
 
 def test_best_effort_mode_probes_namespace_capability(monkeypatch):
-    import gauntlet.tool_loop as tool_loop
+    import gauntlet.containment as containment
     calls = []
-    monkeypatch.setattr(tool_loop, "_probe_namespaces",
+    monkeypatch.setattr(containment, "_probe_namespaces",
                         lambda env: calls.append(dict(env)) or False)
     code = (
         "import json,sys; sys.stdin.readline(); "
@@ -265,3 +279,43 @@ def test_cli_failure_recovery_fails_when_agent_skips_recovery_tool(tmp_path):
     report = json.loads((output / "failure-recovery.tool-loop.json").read_text())
     assert report["pack_evaluation"]["recovery_evidence_missing"] is True
     assert report["pack_evaluation"]["passed"] is False
+
+
+def test_tool_loop_bounds_and_reports_stderr_truncation(tmp_path):
+    code = (
+        "import json,sys,time; sys.stdin.readline(); "
+        "sys.stderr.write('x' * 10000); sys.stderr.flush(); time.sleep(0.1); "
+        "print(json.dumps({'protocol':'tool-loop-v1','event':'FINAL_COMMIT',"
+        "'turn_index':1,'payload':{}}),flush=True)"
+    )
+    result = run_tool_loop(
+        [sys.executable, "-c", code], {"task": "test"}, FIXTURE,
+        {"lookup_evidence"},
+        __import__("gauntlet.containment", fromlist=["ContainmentPolicy"]).ContainmentPolicy(
+            mode="best-effort", max_stderr_bytes=128
+        ), artifact_root=tmp_path / "artifacts",
+    )
+    assert len(result["stderr"].encode("utf-8")) == 128
+    assert result["execution"]["stderr_bytes"] == 128
+    assert result["execution"]["stderr_truncated"] is True
+    assert result["execution"]["returncode"] == 0
+
+
+def test_tool_loop_timeout_persists_failure_evidence_and_reaps_child(tmp_path):
+    from gauntlet.containment import ContainmentPolicy
+    code = "import sys,time; sys.stdin.readline(); time.sleep(30)"
+    artifact_root = tmp_path / "artifacts"
+    with pytest.raises(TimeoutError, match="without FINAL_COMMIT"):
+        run_tool_loop(
+            [sys.executable, "-c", code], {"task": "timeout"}, FIXTURE,
+            {"lookup_evidence"},
+            ContainmentPolicy(mode="best-effort", wall_time_ms=250),
+            artifact_root=artifact_root,
+        )
+    run_dirs = list(artifact_root.iterdir())
+    assert len(run_dirs) == 1
+    report = json.loads((run_dirs[0] / "containment.json").read_text())
+    execution = json.loads((run_dirs[0] / "execution.json").read_text())
+    assert report["filesystem_sandboxed"] is False
+    assert execution["timed_out"] is True
+    assert execution["returncode"] != 0
