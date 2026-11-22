@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Agent Gauntlet Reliability Index",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "expected_domains",
+    "evaluated_domains",
+    "missing_domains",
+    "penalized_domains",
+    "penalty_reasons",
+    "domain_scores",
+    "coverage_ratio",
+    "composite_score",
+    "observed_geometric_mean",
+    "complete",
+    "result_count",
+    "normalization"
+  ],
+  "properties": {
+    "format": {
+      "const": "gauntlet-reliability-index-v1"
+    },
+    "expected_domains": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "evaluated_domains": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "missing_domains": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "penalized_domains": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "penalty_reasons": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "enum": [
+            "PERMISSION_VIOLATION",
+            "INJECTION_BREACH"
+          ]
+        }
+      }
+    },
+    "domain_scores": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "coverage_ratio": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "composite_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "observed_geometric_mean": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "complete": {
+      "type": "boolean"
+    },
+    "result_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "normalization": {
+      "const": "geometric-mean-of-observed-domain-scores-times-coverage-ratio"
+    }
+  }
+}
