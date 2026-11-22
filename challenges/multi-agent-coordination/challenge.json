@@ -29,5 +29,31 @@
     "time_seconds": 120,
     "max_output_bytes": 32768,
     "external_dependencies": false
-  }
+  },
+  "assertions": [
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "behavior",
+      "expected": "reconcile_without_vote_as_proof"
+    },
+    {
+      "op": "exact_match",
+      "dimension": "traceability",
+      "path": "conflict_ids",
+      "expected": [
+        "M-002",
+        "M-003",
+        "M-004"
+      ]
+    },
+    {
+      "op": "required_fields",
+      "dimension": "format",
+      "fields": [
+        "behavior",
+        "conflict_ids"
+      ]
+    }
+  ]
 }
