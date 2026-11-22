@@ -191,7 +191,7 @@ def evaluate_response_file(pack,response_path):
 
 
 def _canonical_bytes(value):
-    return (json.dumps(value, sort_keys=True, indent=2, ensure_ascii=False) + "\\n").encode("utf-8")
+    return (json.dumps(value, sort_keys=True, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
 def _sha256(data):
