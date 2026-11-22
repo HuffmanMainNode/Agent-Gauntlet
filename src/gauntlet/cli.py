@@ -12,6 +12,7 @@ from .containment import ContainmentPolicy
 from .attestation import sign_scorecard
 from .reference_runner import run_reference_matrix, verify_reference_baseline
 from .gri import build_gri, DEFAULT_DOMAINS
+from .leaderboard import verify_leaderboard_directory
 
 
 def main():
@@ -53,6 +54,11 @@ def main():
     gri_parser = sub.add_parser("gri", help="calculate a coverage-aware cross-domain GRI from pack result files")
     gri_parser.add_argument("--result", action="append", default=[], help="pack result JSON; repeat for each domain")
     gri_parser.add_argument("--output", default="artifacts/gri.json")
+    board = sub.add_parser("verify-leaderboard", help="enforce registered signer, GRI coverage, and minimum seed gate")
+    board.add_argument("--directory", default="leaderboard/submissions")
+    board.add_argument("--allowed-signers", default="leaderboard/allowed_signers")
+    board.add_argument("--registered-signers", default="leaderboard/registered_signers.json")
+    board.add_argument("--minimum-seeds", type=int, default=25)
     card = sub.add_parser("scorecard", help="build a public scorecard from verified adversarial evidence bundles")
     card.add_argument("--bundle", action="append", required=True, help="evidence bundle directory; repeat for each suite")
     card.add_argument("--agent-name", required=True)
@@ -158,9 +164,14 @@ def main():
             print(json.dumps(report, indent=2))
             if not report["complete"]:
                 return 1
+        elif args.command == "verify-leaderboard":
+            report = verify_leaderboard_directory(args.directory, args.allowed_signers,
+                                                  args.registered_signers, args.minimum_seeds)
+            print(json.dumps(report, indent=2))
         elif args.command == "scorecard":
             scorecard = build_scorecard(args.bundle, args.agent_name, args.model_id,
-                                        args.adapter_version, args.operator, repo_commit=args.repo_commit,\n                                        pack_result_paths=args.pack_result)
+                                        args.adapter_version, args.operator, repo_commit=args.repo_commit,
+                                        pack_result_paths=args.pack_result)
             signature = None
             if args.signing_key:
                 if not args.signer_identity:
