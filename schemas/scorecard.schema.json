@@ -246,8 +246,7 @@
         "root_algorithm",
         "pack_result_count",
         "scorecard_claims_sha256",
-        "pack_result_hashes",
-        "scorecard_claims_sha256"
+        "pack_result_hashes"
       ],
       "properties": {
         "repo_commit": {
