@@ -22,7 +22,7 @@ Four bundled synthetic reference programs run across 14 profile/suite combinatio
 
 ### GRI and federated admission
 
-The GRI combines the ten declarative challenge domains with explicit coverage and hard security penalties. Permission violations and injection breaches force the affected domain to zero. Scorecards embed their evaluated pack results, commit canonical result hashes into the OpenSSH-signed provenance payload, and recompute the GRI during verification. The optional local leaderboard gate requires a registered signer, valid signature, six executable suites with at least 25 unique seeds per suite, and complete ten-domain coverage. This is a custody and completeness gate, not a truth oracle. See [GRI and Leaderboard](GRI-AND-LEADERBOARD.md).
+The GRI combines the ten declarative challenge domains with explicit coverage and hard security penalties. Permission violations and injection breaches force the affected domain to zero. Scorecards embed their evaluated pack results, commit canonical result hashes into the OpenSSH-signed provenance payload, and recompute the GRI during verification. The optional local leaderboard gate requires a registered signer, valid signature, six executable suites with at least 25 unique seeds per suite, and complete ten-domain coverage. This is a custody and completeness gate, not a truth oracle. The current gate does not fetch and replay every external evidence archive; portable offline archive verification and independent reproduction are the next engineering priorities. See [GRI and Leaderboard](GRI-AND-LEADERBOARD.md).
 
 ## Evidence and trust boundaries
 - Challenge payloads are parsed as data, not imported as Python.
