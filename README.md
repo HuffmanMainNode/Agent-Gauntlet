@@ -57,6 +57,10 @@ The tool-loop runner sends TASK_INIT, intercepts TOOL_CALL, returns TOOL_RESULT,
 
 The Commit 39-45 engineering sequence is recorded in the [22 November 2026 release checkpoint](docs/RELEASE-CHECKPOINT-2026-11-22.md), with the verified 25-seed [baseline report](docs/REFERENCE-BASELINE-REPORT.md).
 
+## Next-phase roadmap
+
+The next engineering priority is a portable evidence archive and fully offline submission verifier, followed by independent reproduction and containment conformance. See the [next-phase engineering roadmap](docs/NEXT-PHASE-ROADMAP.md).
+
 ## Post-release integrity hardening
 
 The post-release audit identified and corrected a scorecard signature-binding gap. OpenSSH attestations now bind the canonical digest of public scorecard claims, including suite summaries, seed inventories, GRI, evidence references, and provenance metadata. See [security fix PR #18](https://github.com/HuffmanMainNode/Agent-Gauntlet/pull/18) and the [GRI and leaderboard trust boundary](docs/GRI-AND-LEADERBOARD.md).
