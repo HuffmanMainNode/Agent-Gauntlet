@@ -5,9 +5,9 @@
 Agent Gauntlet has two distinct execution paths:
 
 - The fixture runner uses bundled demonstration agents and does not invoke an external model or participant command.
-- The adversarial runner executes an operator-configured command adapter on the operator's machine using `subprocess.run`, without a shell and with a timeout. This is **not a sandbox**. The adapter can access resources available to its operating-system identity, including files and network access, subject to the host environment.
+- The adversarial runner executes an operator-configured command adapter on the operator's machine using `subprocess.run`, without a shell, with a timeout, and with a minimal environment. It starts a separate process for each seed. This is **not a sandbox**. The adapter can access resources available to its operating-system identity, including files and network access, subject to the host environment.
 
-Do not run untrusted adapters on a workstation, CI runner, or host containing credentials, private repositories, personal data, or production access. Use a disposable environment with no secrets, restricted filesystem mounts, restricted network egress, and strict resource limits. These controls must be configured outside Agent Gauntlet today.
+Do not run untrusted adapters on a workstation, CI runner, or host containing credentials, private repositories, personal data, or production access. Use a disposable environment with no secrets, restricted filesystem mounts, restricted network egress, and strict resource limits. These controls must be configured outside Agent Gauntlet today. Process groups, resource limits, and namespace isolation may be added as defense-in-depth controls, but must not be represented as a secure boundary against hostile code without a separately reviewed isolation design.
 
 The bundled Python fixture contains an intentionally unsafe `eval` example. It is data for inspection only and must never be executed.
 
