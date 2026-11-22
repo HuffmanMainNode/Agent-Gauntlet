@@ -2,7 +2,7 @@
 
 ## Status
 
-<badge color="success">Commits 39-44 merged</badge> <badge color="success">25-seed baseline verified</badge>
+**Status: Commits 39-44 merged. The 25-seed baseline is verified.**
 
 The prototype-to-benchmark implementation sequence is merged to `main`. Commit 45 records the successful deterministic reference baseline and freezes the next-step handoff.
 
