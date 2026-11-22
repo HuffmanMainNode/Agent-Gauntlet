@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from .assertions import evaluate_assertions
+from .fixture_variants import GENERATOR_ID, generate_seeded_fixture
 
 PACK_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 DIFFICULTIES = {"foundation", "advanced", "expert", "frontier"}
@@ -262,10 +263,11 @@ def run_pack_suite(pack_id: str, command: list[str], seeds: list[int],
     started = datetime.now(timezone.utc)
     manifest_bytes = _canonical_bytes(pack.manifest)
     (bundle / "challenge.json").write_bytes(manifest_bytes)
+    base_fixture_bytes = _canonical_bytes(pack.fixture)
+    (bundle / "base-fixture.json").write_bytes(base_fixture_bytes)
     rows = []
     for seed in seeds:
-        fixture = json.loads(json.dumps(pack.fixture))
-        fixture["seed"] = seed
+        fixture = generate_seeded_fixture(pack.fixture, seed)
         fixture_bytes = _canonical_bytes(fixture)
         fixture_path = bundle / "fixtures" / f"{seed}.json"
         fixture_path.parent.mkdir(parents=True, exist_ok=True)
@@ -336,7 +338,8 @@ def run_pack_suite(pack_id: str, command: list[str], seeds: list[int],
         "format": "agent-gauntlet-pack-evidence-v1", "run_id": run_id,
         "pack_id": pack.pack_id, "pack_version": pack.manifest["version"],
         "seeds": seeds,
-        "seed_semantics": "Each declared seed is injected into the fixed synthetic fixture metadata; fixture payload content is otherwise unchanged.",
+        "seed_semantics": "Each seed deterministically permutes the existing synthetic evidence records by SHA-256 key. Evidence content is unchanged; finite permutations may repeat.",
+        "fixture_generator": GENERATOR_ID,
         "adapter": {
             "name": adapter_name, "version": adapter_version,
             "command_sha256": _sha256(_canonical_bytes(command)),
@@ -398,8 +401,9 @@ def verify_pack_suite(bundle_path: str | Path) -> dict:
             or len(adapter["command_sha256"]) != 64
             or any(ch not in "0123456789abcdef" for ch in adapter["command_sha256"])):
         raise PackValidationError("adapter provenance is incomplete")
-    if evidence.get("seed_semantics") != "Each declared seed is injected into the fixed synthetic fixture metadata; fixture payload content is otherwise unchanged.":
-        raise PackValidationError("unsupported seed semantics declaration")
+    if (evidence.get("seed_semantics") != "Each seed deterministically permutes the existing synthetic evidence records by SHA-256 key. Evidence content is unchanged; finite permutations may repeat."
+            or evidence.get("fixture_generator") != GENERATOR_ID):
+        raise PackValidationError("unsupported seed semantics or fixture generator declaration")
     results = _read_json(bundle / "summary.json", 1048576)
     rows_path = bundle / "results.json"
     if rows_path.is_symlink() or rows_path.stat().st_size > 16777216:
@@ -413,11 +417,16 @@ def verify_pack_suite(bundle_path: str | Path) -> dict:
     if (not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows)
             or [row.get("seed") for row in rows] != seeds):
         raise PackValidationError("result rows do not match declared seed inventory")
-    required_artifacts = {"challenge.json", "results.json", "summary.json", "environment.json"}
+    required_artifacts = {"challenge.json", "base-fixture.json", "results.json", "summary.json", "environment.json"}
     required_artifacts.update(f"fixtures/{seed}.json" for seed in seeds)
     if not required_artifacts.issubset(inventory):
         raise PackValidationError("evidence inventory omits required pack-run artifacts")
-    pack = ChallengePack(pack_id, bundle, manifest, {}, {})
+    base_fixture = _read_json(bundle / "base-fixture.json", 1048576)
+    if (base_fixture.get("challenge_id") != pack_id
+            or base_fixture.get("seed") != manifest["seed"]
+            or base_fixture.get("classification") != "synthetic"):
+        raise PackValidationError("base fixture identity or classification mismatch")
+    pack = ChallengePack(pack_id, bundle, manifest, base_fixture, {})
     for row in rows:
         fixture_path = row.get("fixture_path")
         if not isinstance(fixture_path, str) or Path(fixture_path).is_absolute() or ".." in Path(fixture_path).parts:
@@ -437,6 +446,8 @@ def verify_pack_suite(bundle_path: str | Path) -> dict:
                 or fixture.get("classification") != "synthetic"
                 or fixture.get("environment") != {"network": "disabled", "filesystem": "fixture-only", "submission_execution": "disabled"}):
             raise PackValidationError("fixture identity, seed, or safety classification mismatch")
+        if fixture != generate_seeded_fixture(base_fixture, row["seed"]):
+            raise PackValidationError("fixture does not match the declared deterministic seed generator")
         if row.get("status") == "failed":
             if not isinstance(row.get("error_type"), str) or not isinstance(row.get("error"), str):
                 raise PackValidationError("failed execution record is incomplete")
