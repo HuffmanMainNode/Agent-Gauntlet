@@ -302,7 +302,6 @@ def test_tool_loop_bounds_and_reports_stderr_truncation(tmp_path):
 
 
 def test_tool_loop_timeout_persists_failure_evidence_and_reaps_child(tmp_path):
-    import subprocess
     from gauntlet.containment import ContainmentPolicy
     code = "import sys,time; sys.stdin.readline(); time.sleep(30)"
     artifact_root = tmp_path / "artifacts"
