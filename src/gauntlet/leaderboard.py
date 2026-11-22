@@ -12,7 +12,7 @@ from .attestation import build_provenance, verify_scorecard_signature, NAMESPACE
 
 
 def build_scorecard(bundle_paths: list[str], agent_name: str, model_id: str,
-                    adapter_version: str, operator: str = "unspecified") -> dict:
+                    adapter_version: str, operator: str = "unspecified",\n                    repo_commit: str | None = None) -> dict:
     if not bundle_paths:
         raise ValueError("At least one evidence bundle is required")
     if not agent_name.strip() or not model_id.strip() or not adapter_version.strip():
@@ -72,7 +72,7 @@ def build_scorecard(bundle_paths: list[str], agent_name: str, model_id: str,
         "balanced_behavior_index": balanced,
         "index_explanation": "Geometric mean of the submitted suites' behavior pass rates. Not a universal intelligence, safety, or capability score. Compare only identical challenge versions and suite coverage.",
         "evidence": evidence_refs,
-        "provenance": build_provenance(bundle_paths),
+        "provenance": build_provenance(bundle_paths, repo_commit=repo_commit),
         "environment": {"python": platform.python_version(), "platform": platform.platform()},
         "attestation": {"status": "unsigned", "scheme": None, "identity": None, "namespace": None, "signature_file": None, "signed_object": None},
         "limitations": [
