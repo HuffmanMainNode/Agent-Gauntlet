@@ -6,7 +6,7 @@ from pathlib import Path
 from .adversarial_runner import run_suite
 from .leaderboard import build_scorecard, verify_scorecard, write_scorecard
 from .runner import run, verify
-from .pack_runner import discover_pack_ids, evaluate_response_file, load_pack
+from .pack_runner import discover_pack_ids, evaluate_response_file, evaluate_response, load_pack
 from .tool_loop import run_tool_loop
 from .containment import ContainmentPolicy
 
@@ -104,12 +104,17 @@ def main():
                                    set(permissions["tools"]),
                                    ContainmentPolicy(mode="best-effort", wall_time_ms=args.timeout * 1000,
                                                      max_stdout_bytes=challenge.manifest["limits"]["max_output_bytes"]))
+            evaluation = evaluate_response(challenge, result["final_commit"])
+            if result["permission_violations"]:
+                evaluation["passed"] = False
+                evaluation["score"] = 0.0
+            result["pack_evaluation"] = evaluation
             output = Path(args.output)
             output.mkdir(parents=True, exist_ok=True)
             report = output / f"{args.name}.tool-loop.json"
             report.write_text(json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")
             print(json.dumps({"report": str(report), "permission_violations": result["permission_violations"],
-                              "retry_loop_count": result["retry_loop_count"], "score_adjustment": result["score_adjustment"]}, indent=2))
+                              "retry_loop_count": result["retry_loop_count"], "score_adjustment": result["score_adjustment"], "pack_score": evaluation["score"], "pack_passed": evaluation["passed"]}, indent=2))
         elif args.command == "scorecard":
             scorecard = build_scorecard(args.bundle, args.agent_name, args.model_id,
                                         args.adapter_version, args.operator)
