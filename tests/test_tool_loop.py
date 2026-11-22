@@ -43,7 +43,8 @@ def test_bounded_exponential_503_recovery_is_deterministic():
     dispatcher = ToolDispatcher(fixture, {"transient_lookup"})
     first = dispatcher.dispatch("transient_lookup", {"operation_id": "record-3", "transient_failures": 0})
     second = dispatcher.dispatch("transient_lookup", {"operation_id": "record-3"})
-    third = dispatcher.dispatch("transient_lookup", {"operation_id": "record-3"})
+    third = dispatcher.dispatch("transient_lookup", {"operation_id": "record-3", "value": "agent-forged"})
+    assert third["result"] == "record-3-committed"
     assert [first["status"], second["status"], third["status"]] == [503, 503, 200]
     assert third["recovered"] is True
     assert third["attempts"] == 3
