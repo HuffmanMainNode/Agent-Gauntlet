@@ -282,6 +282,8 @@ def run_pack_suite(pack_id: str, command: list[str], seeds: list[int],
                 artifact_root=artifact_root,
             )
             evaluation = _score_tool_loop(pack, result)
+            containment_file = Path(result["containment_report_path"])
+            execution_file = containment_file.parent / "execution.json"
             rows.append({
                 "seed": seed, "fixture_path": f"fixtures/{seed}.json",
                 "fixture_sha256": _sha256(fixture_bytes), "status": "completed",
@@ -298,6 +300,8 @@ def run_pack_suite(pack_id: str, command: list[str], seeds: list[int],
                     "score_adjustment": result["score_adjustment"],
                     "turns": result["turns"], "execution": result["execution"],
                     "containment": result["containment"],
+                    "containment_artifact": containment_file.relative_to(bundle).as_posix(),
+                    "execution_artifact": execution_file.relative_to(bundle).as_posix(),
                 },
             })
         except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
@@ -305,6 +309,8 @@ def run_pack_suite(pack_id: str, command: list[str], seeds: list[int],
                 "seed": seed, "fixture_path": f"fixtures/{seed}.json",
                 "fixture_sha256": _sha256(fixture_bytes), "status": "failed",
                 "error_type": type(exc).__name__, "error": str(exc)[:1000],
+                "failure_artifacts": [path.relative_to(bundle).as_posix()
+                                      for path in sorted(artifact_root.rglob("*")) if path.is_file()],
             })
     finished = datetime.now(timezone.utc)
     summary = {
@@ -393,8 +399,13 @@ def verify_pack_suite(bundle_path: str | Path) -> dict:
             or any(type(seed) is not int or seed < 0 for seed in seeds)
             or len(set(seeds)) != len(seeds)):
         raise PackValidationError("invalid seed inventory")
-    if not isinstance(rows, list) or [row.get("seed") for row in rows] != seeds:
+    if (not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows)
+            or [row.get("seed") for row in rows] != seeds):
         raise PackValidationError("result rows do not match declared seed inventory")
+    required_artifacts = {"challenge.json", "results.json", "summary.json", "environment.json"}
+    required_artifacts.update(f"fixtures/{seed}.json" for seed in seeds)
+    if not required_artifacts.issubset(inventory):
+        raise PackValidationError("evidence inventory omits required pack-run artifacts")
     pack = ChallengePack(pack_id, bundle, manifest, {}, {})
     for row in rows:
         fixture_path = row.get("fixture_path")
@@ -418,6 +429,9 @@ def verify_pack_suite(bundle_path: str | Path) -> dict:
         if row.get("status") == "failed":
             if not isinstance(row.get("error_type"), str) or not isinstance(row.get("error"), str):
                 raise PackValidationError("failed execution record is incomplete")
+            failure_artifacts = row.get("failure_artifacts", [])
+            if not isinstance(failure_artifacts, list) or any(path not in inventory for path in failure_artifacts):
+                raise PackValidationError("failed execution artifacts are not covered by the evidence inventory")
             continue
         if row.get("status") != "completed":
             raise PackValidationError("unknown execution status")
@@ -426,6 +440,15 @@ def verify_pack_suite(bundle_path: str | Path) -> dict:
             raise PackValidationError("completed execution record is incomplete")
         if tool_loop.get("containment", {}).get("filesystem_sandboxed") is not False:
             raise PackValidationError("containment boundary is missing or overclaimed")
+        for field, expected_value in (("containment_artifact", tool_loop["containment"]),
+                                      ("execution_artifact", tool_loop["execution"])):
+            artifact_name = row.get("tool_loop", {}).get(field)
+            if not isinstance(artifact_name, str) or artifact_name not in inventory:
+                raise PackValidationError(f"missing {field} in evidence inventory")
+            artifact_path = (bundle / artifact_name).resolve()
+            recorded_value = _read_json(artifact_path, 1048576)
+            if recorded_value != expected_value:
+                raise PackValidationError(f"{field} does not match the run record")
         transcript = tool_loop.get("transcript")
         transcript_bytes = json.dumps(
             transcript, sort_keys=True, separators=(",", ":"), ensure_ascii=False
