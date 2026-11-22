@@ -29,5 +29,13 @@
     "network": "disabled",
     "filesystem": "fixture-only",
     "submission_execution": "disabled"
+  },
+  "tool_faults": {
+    "transient_lookup": {
+      "operation_id": "record-3",
+      "failures": 2,
+      "max_retries": 2,
+      "value": "record-3-committed"
+    }
   }
 }
