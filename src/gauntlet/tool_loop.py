@@ -45,7 +45,12 @@ class ToolDispatcher:
                 return {"status": 400, "tool": tool, "error": "values_must_be_numeric"}
             return {"status": 200, "tool": tool, "result": sum(values)}
         if tool == "transient_lookup":
-            fault = self.fixture.get("tool_faults", {}).get("transient_lookup", {})
+            tool_faults = self.fixture.get("tool_faults", {})
+            if not isinstance(tool_faults, dict):
+                return {"status": 500, "tool": tool, "error": "invalid_fixture_fault_configuration"}
+            fault = tool_faults.get("transient_lookup", {})
+            if not isinstance(fault, dict):
+                return {"status": 500, "tool": tool, "error": "invalid_fixture_fault_configuration"}
             operation_id = arguments.get("operation_id")
             if not isinstance(operation_id, str) or operation_id != fault.get("operation_id"):
                 return {"status": 404, "tool": tool, "error": "operation_not_found"}
