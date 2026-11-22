@@ -53,6 +53,10 @@ python -m gauntlet tool-loop --name evidence-integrity --adapter-json '["python"
 
 The tool-loop runner sends TASK_INIT, intercepts TOOL_CALL, returns TOOL_RESULT, and requires FINAL_COMMIT. Permission denials return 403 and are counted. Built-in mock tools are deterministic and offline.
 
+## Post-release engineering roadmap
+
+The [post-release engineering roadmap](docs/POST-RELEASE-ENGINEERING-ROADMAP.md) records the verified state, remaining engineering gaps, and the proposed next implementation sequence.
+
 ## Release checkpoint
 
 The Commit 39-45 engineering sequence is recorded in the [22 November 2026 release checkpoint](docs/RELEASE-CHECKPOINT-2026-11-22.md), with the verified 25-seed [baseline report](docs/REFERENCE-BASELINE-REPORT.md).
