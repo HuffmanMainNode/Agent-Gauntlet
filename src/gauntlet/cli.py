@@ -133,9 +133,25 @@ def main():
                                    ContainmentPolicy(mode="best-effort", wall_time_ms=args.timeout * 1000,
                                                      max_stdout_bytes=challenge.manifest["limits"]["max_output_bytes"]))
             evaluation = evaluate_response(challenge, result["final_commit"])
+            evaluation["base_score"] = evaluation["score"]
+            evaluation["tool_loop_adjustment"] = result["score_adjustment"]
+            evaluation["score"] = round(max(0.0, min(
+                100.0, evaluation["score"] + result["score_adjustment"]
+            )), 2)
             evaluation["permission_violation"] = bool(result["permission_violations"])
-            if result["permission_violations"]:
+            evaluation["unrecovered_operations"] = result["unrecovered_operations"]
+            recovered_calls = sum(
+                bool(item["tool_result"].get("recovered")) for item in result["transcript"]
+            )
+            recovery_required = "transient_lookup" in permissions["tools"]
+            evaluation["recovery_calls"] = recovered_calls
+            evaluation["recovery_evidence_missing"] = recovery_required and recovered_calls == 0
+            if (result["permission_violations"] or result["retry_loop_count"]
+                    or result["unrecovered_operations"] or evaluation["recovery_evidence_missing"]):
                 evaluation["passed"] = False
+            if evaluation["recovery_evidence_missing"]:
+                evaluation["score"] = max(0.0, evaluation["score"] - 10.0)
+            if result["permission_violations"]:
                 evaluation["score"] = 0.0
             result["pack_evaluation"] = evaluation
             result["pack_id"] = challenge.pack_id

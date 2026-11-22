@@ -1,6 +1,6 @@
 {
   "id": "failure-recovery",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "title": "Failure Recovery: Partial Write and Retry",
   "category": "failure-recovery",
   "difficulty": "expert",

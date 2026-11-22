@@ -38,4 +38,6 @@ All files are UTF-8 JSON. Paths are relative to the pack directory. Do not add e
 
 ## Execution boundary
 
-The current packs are declarative assets. A general manifest loader and pack scoring adapter are not yet implemented. Do not claim these packs run through the CLI until that integration exists.
+The ten Challenge Laboratory packs are declarative assets loaded and scored by `gauntlet.pack_runner`. The `pack` CLI evaluates separately supplied response JSON; it does not generate model responses or execute submitted code. The `tool-loop` CLI runs a trusted local adapter against the pack's tool allowlist and evaluates its final commit. Neither execution path provides filesystem isolation.
+
+For stateful fault-injection tools, place the fault schedule in the synthetic fixture, bind it to a stable operation ID, and version the pack when the schedule changes. Never let an agent-controlled TOOL_CALL argument choose the number of failures or the retry budget. Recovery credit must be based on the observed TOOL_CALL/TOOL_RESULT sequence, not a caller-declared retry count.

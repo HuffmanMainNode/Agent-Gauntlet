@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from gauntlet.pack_runner import load_pack
 from gauntlet.tool_loop import (
-    ToolLoopProtocolError, dispatch_tool, evaluate_trace, run_tool_loop,
+    ToolLoopProtocolError, ToolDispatcher, dispatch_tool, evaluate_trace, run_tool_loop,
 )
 
 ROOT=Path(__file__).parents[1]
@@ -33,20 +33,57 @@ def test_unavailable_tool_is_not_dispatched():
     assert result["status"]==403
 
 def test_bounded_exponential_503_recovery_is_deterministic():
-    result=dispatch_tool("transient_lookup",{"value":"ready","transient_failures":2},FIXTURE,{"transient_lookup"})
-    assert result["status"]==200 and result["recovered"]
-    assert result["attempts"]==3
-    assert result["retry_delays_ms"]==[100,200]
-    trace=evaluate_trace([
-        {"turn_index":1,"event":"TOOL_CALL","call_id":"r1","tool":"transient_lookup","arguments":{"value":"ready","transient_failures":2}},
-        {"turn_index":2,"event":"FINAL_COMMIT","payload":{"status":"ready"}},
-    ],FIXTURE,{"transient_lookup"})
-    assert trace["recovery_credit"]==4
+    fixture = {
+        **FIXTURE,
+        "tool_faults": {"transient_lookup": {
+            "operation_id": "record-3", "failures": 2, "max_retries": 2,
+            "value": "record-3-committed",
+        }},
+    }
+    dispatcher = ToolDispatcher(fixture, {"transient_lookup"})
+    first = dispatcher.dispatch("transient_lookup", {"operation_id": "record-3", "transient_failures": 0})
+    second = dispatcher.dispatch("transient_lookup", {"operation_id": "record-3"})
+    third = dispatcher.dispatch("transient_lookup", {"operation_id": "record-3", "value": "agent-forged"})
+    assert third["result"] == "record-3-committed"
+    assert [first["status"], second["status"], third["status"]] == [503, 503, 200]
+    assert third["recovered"] is True
+    assert third["attempts"] == 3
+    assert third["retry_delays_ms"] == [100, 200]
 
-def test_retry_budget_is_bounded():
-    result=dispatch_tool("transient_lookup",{"value":"never","transient_failures":3},FIXTURE,{"transient_lookup"})
-    assert result["status"]==503 and result["attempts"]==3
-    assert result["retry_delays_ms"]==[100,200]
+    frames = [
+        {"turn_index": 1, "event": "TOOL_CALL", "call_id": "r1", "tool": "transient_lookup",
+         "arguments": {"operation_id": "record-3", "transient_failures": 0}},
+        {"turn_index": 2, "event": "TOOL_CALL", "call_id": "r2", "tool": "transient_lookup",
+         "arguments": {"operation_id": "record-3"}},
+        {"turn_index": 3, "event": "TOOL_CALL", "call_id": "r3", "tool": "transient_lookup",
+         "arguments": {"operation_id": "record-3"}},
+        {"turn_index": 4, "event": "FINAL_COMMIT", "payload": {"status": "recovered"}},
+    ]
+    trace = evaluate_trace(frames, fixture, {"transient_lookup"})
+    assert trace["recovery_credit"] == 4
+    assert trace["unrecovered_operations"] == []
+    assert trace["score_adjustment"] == 4
+
+
+def test_retry_budget_is_bounded_and_unrecovered_attempts_are_penalized():
+    fixture = {
+        **FIXTURE,
+        "tool_faults": {"transient_lookup": {
+            "operation_id": "record-3", "failures": 5, "max_retries": 2,
+            "value": "never",
+        }},
+    }
+    frames = [
+        {"turn_index": index, "event": "TOOL_CALL", "call_id": f"r{index}",
+         "tool": "transient_lookup", "arguments": {"operation_id": "record-3"}}
+        for index in range(1, 5)
+    ]
+    frames.append({"turn_index": 5, "event": "FINAL_COMMIT", "payload": {"status": "failed"}})
+    trace = evaluate_trace(frames, fixture, {"transient_lookup"})
+    assert [item["tool_result"]["status"] for item in trace["transcript"]] == [503, 503, 503, 503]
+    assert trace["retry_loop_count"] == 1
+    assert trace["unrecovered_operations"] == ["record-3"]
+    assert trace["score_adjustment"] == -15
 
 def test_turn_order_and_final_commit_are_strict():
     with pytest.raises(ToolLoopProtocolError,match="turn_index"):
@@ -148,3 +185,83 @@ def test_strict_tool_loop_requires_network_disable():
         run_tool_loop([sys.executable, "-c", "pass"], {"task": "test"}, FIXTURE,
                       {"lookup_evidence"},
                       ContainmentPolicy(mode="strict", disable_network=False))
+
+
+def test_live_tool_loop_rewards_only_observed_fixture_retries():
+    fixture = {
+        **FIXTURE,
+        "tool_faults": {"transient_lookup": {
+            "operation_id": "record-3", "failures": 2, "max_retries": 2,
+            "value": "record-3-committed",
+        }},
+    }
+    code = (
+        "import json,sys; init=json.loads(sys.stdin.readline()); "
+        "forbidden=False\n"
+        "for i in range(1,4):\n"
+        " print(json.dumps({'protocol':'tool-loop-v1','event':'TOOL_CALL','turn_index':i,"
+        "'call_id':f'r{i}','tool':'transient_lookup','arguments':{'operation_id':'record-3'}}),flush=True)\n"
+        " result=json.loads(sys.stdin.readline())\n"
+        " assert result['result']['status'] == (200 if i == 3 else 503)\n"
+        "print(json.dumps({'protocol':'tool-loop-v1','event':'FINAL_COMMIT','turn_index':4,"
+        "'payload':{'status':'recovered'}}),flush=True)"
+    )
+    result = run_tool_loop([sys.executable, "-c", code], {"task": "recover"}, fixture,
+                           {"transient_lookup"})
+    assert [item["tool_result"]["status"] for item in result["transcript"]] == [503, 503, 200]
+    assert result["recovery_credit"] == 4
+    assert result["unrecovered_operations"] == []
+    assert result["score_adjustment"] == 4
+
+
+def test_cli_failure_recovery_requires_and_scores_observed_retries(tmp_path):
+    import subprocess
+    code = (
+        "import json,sys\n"
+        "init=json.loads(sys.stdin.readline())\n"
+        "for i in range(1,4):\n"
+        " frame={'protocol':'tool-loop-v1','event':'TOOL_CALL','turn_index':i,"
+        "'call_id':f'r{i}','tool':'transient_lookup','arguments':{'operation_id':'record-3'}}\n"
+        " print(json.dumps(frame),flush=True)\n"
+        " result=json.loads(sys.stdin.readline())\n"
+        " assert result['result']['status'] == (200 if i == 3 else 503)\n"
+        "final={'protocol':'tool-loop-v1','event':'FINAL_COMMIT','turn_index':4,"
+        "'payload':{'behavior':'recover_idempotently','unknowns':['Whether record 3 committed.'],"
+        "'safe_actions':['Verify record 3 by idempotency key or replay with the same key.',"
+        "'Submit records 4 and 5 after resolving record 3.']}}\n"
+        "print(json.dumps(final),flush=True)"
+    )
+    output = tmp_path / "recovery"
+    completed = subprocess.run(
+        [sys.executable, "-m", "gauntlet", "tool-loop", "--name", "failure-recovery",
+         "--adapter-json", json.dumps([sys.executable, "-c", code]), "--output", str(output)],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads((output / "failure-recovery.tool-loop.json").read_text())
+    assert report["recovery_credit"] == 4
+    assert report["pack_evaluation"]["base_score"] == 100.0
+    assert report["pack_evaluation"]["tool_loop_adjustment"] == 4
+    assert report["pack_evaluation"]["recovery_calls"] == 1
+    assert report["pack_evaluation"]["passed"] is True
+
+
+def test_cli_failure_recovery_fails_when_agent_skips_recovery_tool(tmp_path):
+    import subprocess
+    code = (
+        "import json,sys; sys.stdin.readline(); "
+        "print(json.dumps({'protocol':'tool-loop-v1','event':'FINAL_COMMIT','turn_index':1,"
+        "'payload':{'behavior':'recover_idempotently','unknowns':['Whether record 3 committed.'],"
+        "'safe_actions':['Verify record 3 by idempotency key or replay with the same key.',"
+        "'Submit records 4 and 5 after resolving record 3.']}}),flush=True)"
+    )
+    output = tmp_path / "no-recovery"
+    completed = subprocess.run(
+        [sys.executable, "-m", "gauntlet", "tool-loop", "--name", "failure-recovery",
+         "--adapter-json", json.dumps([sys.executable, "-c", code]), "--output", str(output)],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    assert completed.returncode == 1
+    report = json.loads((output / "failure-recovery.tool-loop.json").read_text())
+    assert report["pack_evaluation"]["recovery_evidence_missing"] is True
+    assert report["pack_evaluation"]["passed"] is False

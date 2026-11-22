@@ -51,7 +51,7 @@ Run an interactive local agent using only the tools allowed by its pack:
 python -m gauntlet tool-loop --name evidence-integrity --adapter-json '["python","agent.py"]'
 ```
 
-The tool-loop runner sends TASK_INIT, intercepts TOOL_CALL, returns TOOL_RESULT, and requires FINAL_COMMIT. Permission denials return 403 and are counted. Built-in mock tools are deterministic and offline.
+The tool-loop runner sends TASK_INIT, intercepts TOOL_CALL, returns TOOL_RESULT, and requires FINAL_COMMIT. Permission denials return 403 and are counted. Transient fault schedules are fixture-controlled; recovery credit requires observed retry calls against the same operation ID. Built-in mock tools are deterministic and offline.
 
 ## Post-release engineering roadmap
 
