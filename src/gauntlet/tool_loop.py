@@ -1,6 +1,6 @@
 """Interactive tool-loop-v1 protocol with deterministic, permission-gated mock tools."""
 from __future__ import annotations
-import hashlib, json, os, selectors, signal, subprocess, sys, tempfile, time
+import hashlib, json, os, selectors, signal, subprocess, sys, tempfile, time, uuid
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -168,7 +168,7 @@ def evaluate_trace(frames: list[dict], fixture: dict, allowed_tools: set[str]) -
 
 
 def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: set[str],
-                  policy: ContainmentPolicy | None = None) -> dict:
+                  policy: ContainmentPolicy | None = None,\n                  artifact_root: str | Path = "artifacts") -> dict:
     """Interact with a persistent JSONL agent process until FINAL_COMMIT or a hard limit.
 
     Child code remains operator-trusted. This uses POSIX resource limits and process
@@ -181,8 +181,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
     policy = policy or ContainmentPolicy(mode="best-effort", wall_time_ms=30000)
     if policy.mode == "strict" and not policy.disable_network:
         raise ValueError("strict mode requires disable_network=True")
-    allowed_tools = set(allowed_tools)
-    with tempfile.TemporaryDirectory(prefix="gauntlet-tool-loop-") as cwd:
+    allowed_tools = set(allowed_tools)\n    run_id = uuid.uuid4().hex\n    containment_path = Path(artifact_root) / run_id / "containment.json"\n    with tempfile.TemporaryDirectory(prefix="gauntlet-tool-loop-") as cwd:
         process, containment_report = spawn_contained_process(
             command, policy, int(fixture.get("seed", 0)), cwd
         )
@@ -307,7 +306,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
         finally:
             selector.close()
             returncode = finish_process_group(process)
-        transcript_bytes = json.dumps(
+        containment_path.parent.mkdir(parents=True, exist_ok=True)\n        containment_path.write_text(\n            json.dumps(containment_report.to_dict(), sort_keys=True, indent=2) + "\\n",\n            encoding="utf-8",\n        )\n        transcript_bytes = json.dumps(
             transcript, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode("utf-8")
         return {"protocol":PROTOCOL,"final_commit":final_commit,"transcript":transcript,
