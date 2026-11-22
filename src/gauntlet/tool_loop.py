@@ -79,7 +79,7 @@ class ToolDispatcher:
                 return {"status": 503, "tool": tool, "error": "retry_budget_exhausted",
                         "operation_id": operation_id, "attempt": attempt,
                         "max_retries": max_retries, "retry_budget_exhausted": True}
-            value = arguments.get("value", fault.get("value"))
+            value = fault.get("value")
             self.completed[operation_id] = value
             retries = attempt - 1
             return {
