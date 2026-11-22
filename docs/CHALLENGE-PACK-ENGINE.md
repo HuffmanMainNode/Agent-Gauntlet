@@ -26,3 +26,14 @@ python -m gauntlet tool-loop --name evidence-integrity --adapter-json '["python"
 The runner sends `TASK_INIT`, then accepts sequential `TOOL_CALL` events and returns `TOOL_RESULT` frames until `FINAL_COMMIT`. Tool calls are intercepted before dispatch. Denials return deterministic HTTP-style 403 results and increment permission-violation counters. The deterministic mock tools are `lookup_evidence`, `calculate_sum`, and `transient_lookup`; they do not access external services. Transient failures use a bounded three-attempt schedule with recorded exponential delays. Repeated denied calls are counted as retry loops.
 
 The interactive adapter runs trusted operator-supplied code in a separate process group with POSIX resource limits, bounded output, a wall-clock deadline, and process-group cleanup. It is not a filesystem sandbox. The protocol transcript and counters are evidence of what this local runner observed, not proof of agent identity or honesty.
+
+
+## Seeded local execution and evidence bundles
+
+Use `python -m gauntlet pack-run` to execute a trusted local `tool-loop-v1` adapter for one pack across an explicit, unique seed list. Each run emits a result row with the final response, deterministic assertion evaluation, transcript digest, containment report, execution status, and a fixture hash. The bundle inventory covers the challenge manifest, per-seed fixtures, result and summary records, environment record, and run-scoped containment/execution artifacts.
+
+Failed attempts are retained with a bounded error description and any containment/execution artifacts written before failure. Verify a bundle with `python -m gauntlet verify-pack-run --bundle PATH`; verification checks the inventory, fixture identities and hashes, transcript digests, and recomputes completed evaluations from the recorded response.
+
+The adapter command is not copied into the public evidence manifest because command-line arguments may contain credentials. The manifest records its SHA-256 together with the operator-declared adapter name and version. Keep the exact command and source revision separately for reproduction.
+
+The current packs are fixed synthetic fixtures. A run seed is written into the fixture metadata, while the rest of the fixture payload remains unchanged. The current multi-seed mode therefore records repeated executions over the same challenge data, not seed-generated challenge variants. Local adapter code is operator-trusted and is not filesystem-sandboxed.
