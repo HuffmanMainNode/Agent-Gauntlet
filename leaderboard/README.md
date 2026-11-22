@@ -60,7 +60,7 @@ The scorecard provenance root is SHA-256 over sorted canonical path/hash pairs f
 
 OpenSSH signing is optional and uses `ssh-keygen -Y sign` with the `agent-gauntlet` namespace by default. Verification uses the verifier's own `allowed_signers` file and expected signer identity. Public keys are not trusted merely because they appear in a submitted scorecard. Keep private keys private and distribute trusted public keys through an independently managed channel.
 
-The detached signature covers the canonical attestation payload containing `bundle_root_sha256`, repository commit, challenge-pack hashes, and root algorithm. It is a custody/provenance signature, not a behavioral attestation. A signed result may still be false, manipulated before signing, or produced by an incorrectly identified agent.
+The detached signature covers the canonical attestation payload containing `bundle_root_sha256`, repository commit, challenge-pack hashes, root algorithm, pack-result hashes, and `scorecard_claims_sha256`. That claim digest binds all public scorecard claims, including suite summaries, seed inventories, GRI, evidence references, environment, and limitations. It is a custody/provenance signature, not a behavioral attestation. A signed result may still be false, manipulated before signing, or produced by an incorrectly identified agent.
 
 
 ## Gauntlet Reliability Index (GRI)

@@ -34,7 +34,7 @@ Every pack contains `challenge.json`, `fixture.json`, and `expected.json`. All i
 
 Run an executable suite using the CLI and adapter options documented in the root README.
 
-**Integration boundary:** the ten Challenge Laboratory packs are declarative assets. A general-purpose pack loader, evaluator, and CLI execution path are future work. Do not describe these packs as executable until those components and tests have landed.
+**Execution boundary:** the ten Challenge Laboratory packs are declarative data assets loaded and evaluated by `gauntlet.pack_runner`. The `pack` command evaluates separately supplied JSON responses; it does not itself generate agent responses or execute submission code. The `tool-loop` command can run a trusted local adapter against a pack's tool allowlist and evaluate its final commit. Neither path is a filesystem sandbox.
 
 ## Response contract for existing adapters
 

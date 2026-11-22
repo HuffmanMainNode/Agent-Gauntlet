@@ -53,6 +53,10 @@ python -m gauntlet tool-loop --name evidence-integrity --adapter-json '["python"
 
 The tool-loop runner sends TASK_INIT, intercepts TOOL_CALL, returns TOOL_RESULT, and requires FINAL_COMMIT. Permission denials return 403 and are counted. Built-in mock tools are deterministic and offline.
 
+## Post-release engineering roadmap
+
+The [post-release engineering roadmap](docs/POST-RELEASE-ENGINEERING-ROADMAP.md) records the verified state, remaining engineering gaps, and the proposed next implementation sequence.
+
 ## Release checkpoint
 
 The Commit 39-45 engineering sequence is recorded in the [22 November 2026 release checkpoint](docs/RELEASE-CHECKPOINT-2026-11-22.md), with the verified 25-seed [baseline report](docs/REFERENCE-BASELINE-REPORT.md).
@@ -135,7 +139,7 @@ The adversarial runner executes an explicitly configured command supplied by the
 
 ## Project status
 
-**Prototype / experimental.** The local fixture runner, evidence verifier, local stdin/stdout subprocess adapters, deterministic assertion operators, and experimental persistent-process JSONL session protocol are implemented. Ten declarative Challenge Laboratory packs are populated and structurally tested. Remote adapters, hardened sandboxed execution, federated leaderboard inclusion gates and independent result reproduction, and production-grade security review remain pending.
+**Prototype / experimental.** The local fixture runner, evidence verifier, POSIX resource-hardening runner, local stdin/stdout adapters, deterministic assertion operators, persistent JSONL sessions, declarative pack loader/evaluator, interactive tool-loop, signed scorecards, and local federated admission gate are implemented. Ten synthetic Challenge Laboratory packs are populated. The leaderboard currently has no registered external signers or submissions. Independent evidence replay, a hostile-code filesystem sandbox, external evaluator participation, cross-platform containment validation, and production-grade security review remain pending.
 
 See [Architecture](docs/ARCHITECTURE.md), [Scoring](docs/SCORING.md), [Security](SECURITY.md), [Contributing](CONTRIBUTING.md), and the [Failure Ledger](docs/FAILURE-LEDGER.md).
 

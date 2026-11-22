@@ -37,7 +37,7 @@
 - The command adapter is not a sandbox. Do not run untrusted adapters on a host containing sensitive data or credentials.
 - Evidence hashes detect content changes; unsigned manifests do not authenticate the agent, model provider, operator, or honest execution.
 - The current evaluator checks narrow declared contracts. Evidence-ID presence is not semantic entailment or independent fact verification.
-- Live-source snapshots, cryptographic signatures, a hardened sandbox, confidence calibration, and independent semantic evaluation remain future work.
+- Live-source snapshots, a hostile-code filesystem sandbox, confidence calibration, and independent semantic evaluation remain future work. OpenSSH scorecard custody signatures and the local registered-signer admission gate are implemented; independent external evidence replay is not.
 
 ## Closure standard
 
@@ -91,3 +91,13 @@ Never mark a failure closed merely because a later unrelated CI run is green.
 - **Regression coverage:** Add a signed-scorecard tampering test that changes a suite pass rate and recomputes the ordinary scorecard checksum. The leaderboard gate must still reject the modified scorecard.
 - **Verification:** The final PR branch passed the complete Python 3.11/3.12/3.13 test matrix in [workflow 45054991877](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45054991877). The leaderboard submission gate passed in [workflow 45054997644](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45054997644). The signed-claim tampering regression test passed.
 - **Disposition:** Closed by PR #18 after the final cross-version CI matrix and leaderboard gate passed. Earlier red CI attempts remain in Actions as preserved development history.
+
+
+## Audit follow-up AF-2026-11-22-001: scorecard schema and trust-state documentation
+
+- **Observed:** The scorecard schema listed `scorecard_claims_sha256` twice in the provenance required array. JSON parsers accept the document, but duplicate required entries are redundant and obscure schema review.
+- **Correction:** Deduplicate the required-property list without changing the schema's effective validation contract.
+- **Observed:** The leaderboard guide described the original provenance signature without explaining the additional signed public-claims digest or the gate's non-replay limitation.
+- **Correction:** Document the signed-claims digest, the gate's exact local verification boundary, and the current empty signer/submission bootstrap state.
+- **Verification:** Schema parses as JSON; documentation changes are reviewed in this follow-up PR. Full CI required before merge.
+- **Disposition:** Fixed-pending-verification.

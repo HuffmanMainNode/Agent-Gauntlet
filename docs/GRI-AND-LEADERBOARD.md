@@ -41,7 +41,7 @@ python -m gauntlet scorecard \
   --output artifacts/scorecard.json
 ```
 
-Repeat `--bundle` for each of the six executable suites and `--pack-result` for each of the ten domains. The scorecard embeds the pack results, their canonical hashes are included in the provenance root, and the OpenSSH signature covers that root. Scorecard verification recomputes the GRI and checks the embedded pack results against the signed hashes.
+Repeat `--bundle` for each of the six executable suites and `--pack-result` for each of the ten domains. The scorecard embeds the pack results, their canonical hashes are included in the provenance root, and the OpenSSH signature covers that root. A separate canonical digest of all public scorecard claims (agent metadata, suite summaries, seed inventories, GRI, evidence references, environment and limitations) is also included in the signed payload. Verification recomputes this claim digest and checks embedded pack results against their signed hashes. Recalculating the ordinary scorecard checksum after editing a claim does not restore signature validity.
 
 ## Federated leaderboard gate
 
@@ -80,3 +80,8 @@ The default gate fails closed when trust files or submissions are missing. Signa
 ## Evidence boundary
 
 The signature binds the submitter's declared scorecard claims and the provenance digest. The current local gate verifies the signature and internal consistency of those declarations; it does not fetch external evidence archives or independently replay every submitted adapter run. A registered signer can still sign inaccurate claims. Independent reproduction remains a separate evidence level and must not be inferred from a valid signature.
+
+
+## Audit clarification (22 November 2026)
+
+The signature authenticates the key holder's declared claims and the provenance digests. The local gate checks internal consistency, suite inventory, seed counts, GRI coverage and registered signer status. It does not independently retrieve the referenced evidence files or replay external adapter executions. A signed submission is therefore an authenticated declaration, not independently reproduced behavioral truth. The repository currently has no registered signer identities and no submitted leaderboard scorecards; a green empty-directory gate run confirms fail-closed bootstrap behavior only, not external leaderboard participation.
