@@ -12,7 +12,8 @@ from .attestation import build_provenance, verify_scorecard_signature, NAMESPACE
 
 
 def build_scorecard(bundle_paths: list[str], agent_name: str, model_id: str,
-                    adapter_version: str, operator: str = "unspecified",\n                    repo_commit: str | None = None) -> dict:
+                    adapter_version: str, operator: str = "unspecified",
+                    repo_commit: str | None = None) -> dict:
     if not bundle_paths:
         raise ValueError("At least one evidence bundle is required")
     if not agent_name.strip() or not model_id.strip() or not adapter_version.strip():
