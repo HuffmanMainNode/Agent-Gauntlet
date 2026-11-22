@@ -10,6 +10,6 @@ For --all, the response directory must contain one JSON object per pack, named <
 
 Each pack contains challenge.json, fixture.json, and expected.json. The manifest declares fixed seed, synthetic provenance, permissions, resource limits, scoring weights, and assertion rules. The loader rejects unknown fields, unsupported permissions, duplicate JSON keys, path traversal, symlink escapes, mismatched fixture IDs/seeds, non-synthetic fixtures, oversized inputs, and unsupported operators.
 
-Supported assertions: exact_match, numeric_tolerance, must_abstain, must_surface_conflict_ids, forbidden_substrings. Every pack must cover behavior, traceability, and format dimensions. Dimension scores are normalized to 0-100 and combined using weights totaling 100.
+Supported assertions: exact_match, numeric_tolerance, must_abstain, must_surface_conflict_ids, forbidden_substrings, required_fields. Every pack must cover behavior, traceability, and format dimensions. Dimension scores are normalized to 0-100 and combined using weights totaling 100.
 
 The supported permission allowlist is network disabled, bundled-fixture-only data, and no submission-code execution. The engine passes no filesystem paths or tool handles to an agent and evaluates a response file only. This is a data-contract evaluator, not an OS sandbox. See CONTAINMENT.md.
