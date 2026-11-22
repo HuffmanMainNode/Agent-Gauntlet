@@ -19,6 +19,8 @@ def test_scorecard_is_built_from_verified_evidence(tmp_path):
     assert report["suites"] == 1
     assert report["cases"] == 2
     assert card["benchmark"]["suites"]["hallucination"]["execution_failures"] == 0
+    assert card["gri"]["coverage_ratio"] == 0.0
+    assert len(card["gri"]["missing_domains"]) == 10
 
 
 def test_scorecard_tampering_is_detected(tmp_path):
@@ -55,3 +57,17 @@ def test_scorecard_reports_execution_failures(tmp_path):
     card = build_scorecard([str(bundle)], "Example Agent", "example/model-v1", "adapter-1")
     assert card["benchmark"]["suites"]["hallucination"]["execution_failures"] == 1
     assert card["benchmark"]["suites"]["hallucination"]["behavior_pass_rate"] == 0
+
+def test_scorecard_gri_is_bound_to_pack_result_provenance(tmp_path):
+    import sys
+    code = "import json,sys; json.load(sys.stdin); print(json.dumps({'claims': [], 'abstain': True}))"
+    bundle = run_suite("hallucination", [sys.executable, "-c", code], [5], tmp_path / "runs",
+                       agent_name="Example Agent", model_id="example/model-v1",
+                       adapter_version="adapter-1")
+    result = tmp_path / "evidence-integrity.result.json"
+    result.write_text(json.dumps({"pack_id":"evidence-integrity","seed":1,"score":88,
+                                  "permission_violation":False,"injection_breach":False}))
+    card = build_scorecard([str(bundle)], "Example Agent", "example/model-v1", "adapter-1",
+                           pack_result_paths=[str(result)])
+    assert card["gri"]["coverage_ratio"] == 0.1
+    assert card["provenance"]["pack_result_count"] == 1
