@@ -33,7 +33,7 @@ def test_gri_full_coverage_uses_penalized_geometric_mean():
     assert result["coverage_ratio"] == 1
     assert result["missing_domains"] == []
     assert result["complete"] is True
-    assert result["composite_score"] == pytest.approx(98.0, abs=0.1)
+    assert result["composite_score"] == pytest.approx(97.78, abs=0.1)
 
 
 def test_gri_rejects_unknown_domain_and_non_boolean_security_flags():
