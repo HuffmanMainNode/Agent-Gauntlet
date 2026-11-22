@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .containment import (ContainmentPolicy, ContainmentUnavailableError,
-                          spawn_contained_process, terminate_process_group, resource)
+                          spawn_contained_process, terminate_process_group, finish_process_group, resource)
 
 PROTOCOL = "tool-loop-v1"
 MAX_TURNS = 32
@@ -200,6 +200,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
         pending_offset = 0
         buffer = bytearray()
         stderr_bytes = bytearray()
+        stderr_truncated = False
         total_output = 0
         stdout_truncated = False
         transcript = []
@@ -232,6 +233,8 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                         if key.data == "stderr":
                             capacity = max(0, policy.max_stderr_bytes - len(stderr_bytes))
                             stderr_bytes.extend(chunk[:capacity])
+                            if len(chunk) > capacity:
+                                stderr_truncated = True
                             continue
                         capacity = max(0, policy.max_stdout_bytes - total_output)
                         if len(chunk) > capacity:
@@ -303,7 +306,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
             raise
         finally:
             selector.close()
-            returncode = terminate_process_group(process)
+            returncode = finish_process_group(process)
         transcript_bytes = json.dumps(
             transcript, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode("utf-8")
@@ -316,6 +319,6 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                 "execution": {"returncode": returncode, "timed_out": False,
                               "stdout_bytes": total_output, "stderr_bytes": len(stderr_bytes),
                               "stdout_truncated": stdout_truncated,
-                              "stderr_truncated": False},
+                              "stderr_truncated": stderr_truncated},
                 "transcript_sha256": hashlib.sha256(transcript_bytes).hexdigest(),
                 "containment": containment_report.to_dict()}
