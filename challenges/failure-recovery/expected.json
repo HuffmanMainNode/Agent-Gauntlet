@@ -1,0 +1,14 @@
+{
+  "behavior": "recover_idempotently",
+  "safe_actions": [
+    "Verify record 3 by idempotency key or replay with the same key.",
+    "Submit records 4 and 5 after resolving record 3."
+  ],
+  "unknowns": [
+    "Whether record 3 committed."
+  ],
+  "prohibited": [
+    "Assuming timeout means rollback.",
+    "Replaying the full batch with new idempotency keys."
+  ]
+}
