@@ -76,7 +76,7 @@ def build_scorecard(bundle_paths: list[str], agent_name: str, model_id: str,
         "benchmark": {"suite_count": len(suites), "case_count": sum(x["cases"] for x in suites.values()),
                       "suites": suites},
         "balanced_behavior_index": balanced,
-        "gri": gri,
+        "gri": gri,\n        "pack_results": pack_results,
         "index_explanation": "Geometric mean of the submitted suites' behavior pass rates. Not a universal intelligence, safety, or capability score. Compare only identical challenge versions and suite coverage.",
         "evidence": evidence_refs,
         "provenance": provenance,
@@ -112,6 +112,21 @@ def verify_scorecard(path: str, signature_path: str | None = None,
         raise ValueError("Scorecard digest mismatch")
     if not scorecard.get("evidence"):
         raise ValueError("Scorecard has no evidence references")
+    pack_results = scorecard.get("pack_results", [])
+    if not isinstance(pack_results, list):
+        raise ValueError("Scorecard pack_results must be a list")
+    recomputed_gri = build_gri(pack_results, DEFAULT_DOMAINS)
+    if recomputed_gri != scorecard.get("gri"):
+        raise ValueError("Scorecard GRI does not match its embedded pack results")
+    provenance = scorecard.get("provenance", {})
+    if provenance.get("pack_result_count") != len(pack_results):
+        raise ValueError("Scorecard pack-result count does not match provenance")
+    from .runner import digest
+    expected_hashes = sorted([{"pack_id": item["pack_id"], "seed": item.get("seed", "unspecified"),
+                               "sha256": digest(canonical_bytes(item))} for item in pack_results],
+                             key=lambda item: (item["pack_id"], str(item["seed"]), item["sha256"]))
+    if expected_hashes != provenance.get("pack_result_hashes"):
+        raise ValueError("Scorecard pack results do not match signed provenance hashes")
     attestation = scorecard.get("attestation", {})
     signature_inputs = (signature_path, allowed_signers, signer_identity)
     if any(signature_inputs) and not all(signature_inputs):
