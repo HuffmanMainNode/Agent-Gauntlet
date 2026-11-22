@@ -101,3 +101,20 @@ Never mark a failure closed merely because a later unrelated CI run is green.
 - **Correction:** Document the signed-claims digest, the gate's exact local verification boundary, and the current empty signer/submission bootstrap state.
 - **Verification:** Schema parses as JSON; documentation changes are reviewed in this follow-up PR. Full CI required before merge.
 - **Disposition:** Fixed-pending-verification.
+
+## Entry FG-2026-11-22-008: interactive tool-loop containment and turn validation diverged
+
+- **Observed:** The single-turn containment runner attempted best-effort Linux namespace isolation when supported, while the interactive tool-loop attempted namespaces only in strict mode. The live tool-loop also compared turn indices by equality without requiring an exact integer type, allowing JSON boolean `true` to compare equal to integer turn 1. Offline trace replay already rejected booleans.
+- **Impact:** Best-effort containment behavior differed between execution paths, and live protocol validation accepted a frame that offline replay rejected.
+- **Correction:** Make the tool-loop probe namespace capability in best-effort mode and use the same fail-closed strict-mode requirement. Report requested/effective mode, namespace activation, host OS, and the explicit non-sandbox filesystem boundary. Require exact integer turn indices in the live process path.
+- **Regression coverage:** Add tests for best-effort namespace probing, effective capability reporting, strict-mode rejection when network isolation is disabled, and boolean turn-index rejection in both live and offline protocol paths.
+- **Disposition:** Fixed-pending-verification until the full Python 3.11/3.12/3.13 matrix passes.
+
+
+## Entry FG-2026-11-22-009: containment import formatting regression during PR #20
+
+- **Observed:** Several consecutive PR #20 CI attempts failed test collection on Python 3.11, 3.12, and 3.13 with the same syntax error in the new multi-line containment import.
+- **Root cause:** The initial source edit wrote the literal backslash-n escape into the Python import statement instead of inserting a physical newline. The first corrective edit did not match the actual one-backslash sequence, so subsequent CI attempts continued to fail until the exact source text was inspected.
+- **Correction:** Replaced the literal escape with a real line break before the next CI attempt.
+- **Evidence:** Failed workflows [45055729009](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055729009), [45055738895](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055738895), [45055755569](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055755569), [45055770229](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055770229), and [45055775760](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055775760), [45055812104](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055812104), and [45055834805](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055834805). The exact literal escape has now been replaced with a physical newline; final disposition awaits the complete matrix.
+- **Disposition:** Fixed-pending-verification. The historical failed run remains visible.
