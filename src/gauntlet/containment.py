@@ -153,6 +153,100 @@ def _apply_limits_in_child(plan: dict[str, tuple[int, int]], report_fd: int) -> 
         os.close(report_fd)
 
 
+
+def spawn_contained_process(
+    argv: list[str], policy: ContainmentPolicy, seed: int, cwd: str | Path,
+) -> tuple[subprocess.Popen, ContainmentReport]:
+    """Start one child under the shared POSIX execution policy.
+
+    Both one-shot adapters and interactive tool-loop sessions use this function,
+    so namespace probing, environment scrubbing, confirmed rlimits, and process
+    group creation cannot silently diverge.
+    """
+    if not argv or any(not isinstance(arg, str) or not arg for arg in argv):
+        raise ValueError("argv must be a non-empty list of non-empty strings")
+    if type(seed) is not int:
+        raise TypeError("seed must be an integer")
+    if policy.mode == "strict" and not policy.disable_network:
+        raise ValueError("strict mode requires disable_network=True")
+
+    working_dir = str(Path(cwd).resolve())
+    env = _minimal_environment(seed, working_dir)
+    namespaces = (
+        _probe_namespaces(env)
+        if policy.mode != "off" and policy.disable_network else False
+    )
+    if policy.mode == "strict" and not namespaces:
+        raise ContainmentUnavailableError(
+            "Strict containment unavailable: Linux unshare user/net/PID namespace probe failed"
+        )
+
+    report = ContainmentReport(requested_mode=policy.mode, effective_mode="none")
+    if namespaces:
+        report.namespaces_active = {"user": True, "net": True, "pid": True}
+        report.effective_mode = "rlimit_and_user_net_pid_ns"
+    elif policy.mode != "off":
+        if resource is None or os.name != "posix":
+            if policy.mode == "strict":
+                raise ContainmentUnavailableError("POSIX resource limits are unavailable")
+        else:
+            report.effective_mode = "rlimit_only"
+
+    command = list(argv)
+    if namespaces:
+        command = [
+            "unshare", "--user", "--map-root-user", "--net", "--pid", "--fork", "--", *argv
+        ]
+
+    plan = _limit_plan(policy) if policy.mode != "off" and resource is not None and os.name == "posix" else {}
+    report_read = report_write = None
+    preexec_fn = None
+    pass_fds: tuple[int, ...] = ()
+    if plan:
+        report_read, report_write = os.pipe()
+        preexec_fn = lambda: _apply_limits_in_child(plan, report_write)
+        pass_fds = (report_write,)
+
+    try:
+        process = subprocess.Popen(
+            command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            cwd=working_dir, env=env, shell=False, close_fds=True,
+            start_new_session=True, preexec_fn=preexec_fn, pass_fds=pass_fds, bufsize=0,
+        )
+    except BaseException:
+        if report_read is not None:
+            os.close(report_read)
+        if report_write is not None:
+            os.close(report_write)
+        raise
+
+    if report_write is not None:
+        os.close(report_write)
+        report_write = None
+        try:
+            with os.fdopen(report_read, "rb") as handle:
+                raw = handle.read(8192)
+            if not raw:
+                _kill_process_group(process)
+                process.wait()
+                raise ContainmentUnavailableError("Child did not confirm applied resource limits")
+            confirmed = json.loads(raw.decode("ascii"))
+            report.applied_limits = {
+                name: (int(values[0]), int(values[1]))
+                for name, values in confirmed.items()
+            }
+            if set(report.applied_limits) != set(plan):
+                _kill_process_group(process)
+                process.wait()
+                raise ContainmentUnavailableError("Child confirmed an incomplete resource limit set")
+        except BaseException:
+            if process.poll() is None:
+                _kill_process_group(process)
+                process.wait()
+            raise
+    return process, report
+
+
 def _kill_process_group(process: subprocess.Popen) -> None:
     try:
         os.killpg(process.pid, signal.SIGKILL)
@@ -160,6 +254,17 @@ def _kill_process_group(process: subprocess.Popen) -> None:
         pass
     except PermissionError:
         process.kill()
+
+
+
+def terminate_process_group(process: subprocess.Popen, timeout: float = 2.0) -> int:
+    """Kill every remaining process in the child's session and reap its leader."""
+    _kill_process_group(process)
+    try:
+        return process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _kill_process_group(process)
+        return process.wait(timeout=timeout)
 
 
 def _capture_process(process: subprocess.Popen, stdin_bytes: bytes,
@@ -248,84 +353,19 @@ def run_contained(argv: list[str], stdin_bytes: bytes, policy: ContainmentPolicy
     report = ContainmentReport(requested_mode=policy.mode, effective_mode="none")
 
     with tempfile.TemporaryDirectory(prefix="gauntlet-") as temp_dir:
-        env = _minimal_environment(seed, temp_dir)
-        namespaces = _probe_namespaces(env) if policy.mode != "off" and policy.disable_network else False
-        if policy.mode == "strict" and not namespaces:
-            raise ContainmentUnavailableError(
-                "Strict containment unavailable: Linux unshare user/net/PID namespace probe failed"
-            )
-        use_namespaces = namespaces and policy.mode != "off"
-        if use_namespaces:
-            report.namespaces_active = {"user": True, "net": True, "pid": True}
-            report.effective_mode = "rlimit_and_user_net_pid_ns"
-        elif policy.mode != "off":
-            if resource is None or os.name != "posix":
-                if policy.mode == "strict":
-                    raise ContainmentUnavailableError("POSIX resource limits are unavailable")
-            else:
-                report.effective_mode = "rlimit_only"
-
-        command = list(argv)
-        if use_namespaces:
-            command = [
-                "unshare", "--user", "--map-root-user", "--net", "--pid", "--fork", "--", *argv
-            ]
-
-        plan: dict[str, tuple[int, int]] = {}
-        report_read = report_write = None
-        preexec_fn = None
-        pass_fds: tuple[int, ...] = ()
-        if policy.mode != "off" and resource is not None and os.name == "posix":
-            plan = _limit_plan(policy)
-            report_read, report_write = os.pipe()
-            preexec_fn = lambda: _apply_limits_in_child(plan, report_write)
-            pass_fds = (report_write,)
-
-        process = None
+        process, report = spawn_contained_process(argv, policy, seed, temp_dir)
         timed_out = truncated = False
         stdout = stderr = b""
         returncode: int | None = None
         try:
-            process = subprocess.Popen(
-                command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                cwd=temp_dir, env=env, shell=False, close_fds=True,
-                start_new_session=True, preexec_fn=preexec_fn, pass_fds=pass_fds, bufsize=0,
-            )
-            if report_write is not None:
-                os.close(report_write)
-                report_write = None
-                with os.fdopen(report_read, "rb") as handle:
-                    raw = handle.read(8192)
-                report_read = None
-                if raw:
-                    confirmed = json.loads(raw.decode("ascii"))
-                    report.applied_limits = {
-                        name: (int(values[0]), int(values[1]))
-                        for name, values in confirmed.items()
-                    }
             stdout, stderr, truncated, timed_out = _capture_process(
                 process, stdin_bytes, policy, started + policy.wall_time_ms / 1000
             )
-            if timed_out:
-                _kill_process_group(process)
-            try:
-                returncode = process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                _kill_process_group(process)
-                returncode = process.wait(timeout=2)
-            _kill_process_group(process)
         finally:
-            if report_write is not None:
-                os.close(report_write)
-            if report_read is not None:
-                os.close(report_read)
-            if process is not None and process.poll() is None:
-                _kill_process_group(process)
-                process.wait()
-
+            returncode = terminate_process_group(process)
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(
-            json.dumps(report.to_dict(), sort_keys=True, indent=2) + "\n", encoding="utf-8"
+            json.dumps(report.to_dict(), sort_keys=True, indent=2) + "\\n", encoding="utf-8"
         )
 
     return ExecutionResult(
