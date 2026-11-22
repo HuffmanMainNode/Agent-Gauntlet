@@ -91,3 +91,12 @@ Never mark a failure closed merely because a later unrelated CI run is green.
 - **Regression coverage:** Add a signed-scorecard tampering test that changes a suite pass rate and recomputes the ordinary scorecard checksum. The leaderboard gate must still reject the modified scorecard.
 - **Verification:** The final PR branch passed the complete Python 3.11/3.12/3.13 test matrix in [workflow 45054991877](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45054991877). The leaderboard submission gate passed in [workflow 45054997644](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45054997644). The signed-claim tampering regression test passed.
 - **Disposition:** Closed by PR #18 after the final cross-version CI matrix and leaderboard gate passed. Earlier red CI attempts remain in Actions as preserved development history.
+
+
+## Entry FG-2026-11-22-008: interactive tool-loop containment and turn validation diverged
+
+- **Observed:** The single-turn containment runner attempted best-effort Linux namespace isolation when supported, while the interactive tool-loop attempted namespaces only in strict mode. The live tool-loop also compared turn indices by equality without requiring an exact integer type, allowing JSON boolean `true` to compare equal to integer turn 1. Offline trace replay already rejected booleans.
+- **Impact:** Best-effort containment behavior differed between execution paths, and live protocol validation accepted a frame that offline replay rejected.
+- **Correction:** Make the tool-loop probe namespace capability in best-effort mode and use the same fail-closed strict-mode requirement. Report requested/effective mode, namespace activation, host OS, and the explicit non-sandbox filesystem boundary. Require exact integer turn indices in the live process path.
+- **Regression coverage:** Add tests for best-effort namespace probing, effective capability reporting, strict-mode rejection when network isolation is disabled, and boolean turn-index rejection in both live and offline protocol paths.
+- **Disposition:** Fixed-pending-verification until the full Python 3.11/3.12/3.13 matrix passes.
