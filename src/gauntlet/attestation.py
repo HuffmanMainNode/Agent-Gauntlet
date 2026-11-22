@@ -67,7 +67,8 @@ def _challenge_hashes(repo_root: Path) -> dict[str, str]:
 
 
 def build_provenance(bundle_paths: list[str], repo_root: str | Path | None = None,
-                     repo_commit: str | None = None) -> dict[str, Any]:
+                     repo_commit: str | None = None,
+                     additional_files: list[str] | None = None) -> dict[str, Any]:
     if not bundle_paths:
         raise AttestationError("at least one evidence bundle is required")
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[2]
@@ -105,6 +106,25 @@ def build_provenance(bundle_paths: list[str], repo_root: str | Path | None = Non
                     "path": f"bundles/{suite}/{run_id}/{relative}",
                     "sha256": digest(path.read_bytes()),
                 })
+    pack_result_count = 0
+    for raw in additional_files or []:
+        candidate = Path(raw)
+        if candidate.is_symlink() or not candidate.is_file():
+            raise AttestationError(f"additional provenance file missing or symlinked: {candidate}")
+        raw_bytes = candidate.read_bytes()
+        try:
+            result = json.loads(raw_bytes.decode("utf-8"))
+        except (UnicodeError, json.JSONDecodeError) as exc:
+            raise AttestationError(f"additional provenance file is not valid JSON: {candidate}") from exc
+        if not isinstance(result, dict) or not isinstance(result.get("pack_id"), str):
+            raise AttestationError(f"additional provenance file lacks a pack_id: {candidate}")
+        pack_id = result["pack_id"]
+        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", pack_id):
+            raise AttestationError("additional provenance file has an invalid pack_id")
+        seed = result.get("seed", "unspecified")
+        entries.append({"path": f"pack-results/{pack_id}/seed-{seed}/{digest(raw_bytes)}.json",
+                        "sha256": digest(raw_bytes)})
+        pack_result_count += 1
     entries.sort(key=lambda item: item["path"])
     if len({item["path"] for item in entries}) != len(entries):
         raise AttestationError("provenance contains duplicate canonical paths")
@@ -114,7 +134,7 @@ def build_provenance(bundle_paths: list[str], repo_root: str | Path | None = Non
         "challenge_pack_hashes": packs,
         "bundle_root_sha256": root_hash,
         "bundle_file_count": sum(1 for item in entries if item["path"].startswith("bundles/")),
-        "challenge_pack_count": len(packs),
+        "challenge_pack_count": len(packs),\n        "pack_result_count": pack_result_count,
         "root_algorithm": "sha256(sorted-path-hash-pairs-v1)",
     }
 
