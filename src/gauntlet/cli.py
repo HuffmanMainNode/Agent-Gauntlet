@@ -17,11 +17,12 @@ def main():
     verify_parser = sub.add_parser("verify", help="verify an evidence bundle")
     verify_parser.add_argument("--bundle", required=True)
     adv = sub.add_parser("adversarial", help="run a seeded adversarial suite using an explicitly trusted adapter command")
-    adv.add_argument("--suite", required=True, choices=["hallucination", "contradiction", "injection", "variable", "ambiguity"])
+    adv.add_argument("--suite", required=True, choices=["hallucination", "contradiction", "injection", "variable", "ambiguity", "stateful"])
     adv.add_argument("--adapter-json", required=True, help='JSON argument array, e.g. ["python","my_adapter.py"]')
     adv.add_argument("--seeds", default="1,2,3", help="comma-separated integer seeds; maximum 100")
     adv.add_argument("--output", default="artifacts/adversarial")
     adv.add_argument("--timeout", type=int, default=45)
+    adv.add_argument("--protocol", choices=["single-turn", "jsonl-session"], default="single-turn")
     adv.add_argument("--agent-name", required=True)
     adv.add_argument("--model-id", required=True)
     adv.add_argument("--adapter-version", required=True)
@@ -51,7 +52,7 @@ def main():
                 raise ValueError("--adapter-json must be a JSON array of strings")
             seeds = [int(value.strip()) for value in args.seeds.split(",") if value.strip()]
             path = run_suite(args.suite, command, seeds, Path(args.output), args.timeout,
-                             args.agent_name, args.model_id, args.adapter_version, args.operator)
+                             args.agent_name, args.model_id, args.adapter_version, args.operator, args.protocol)
             print(json.dumps({"bundle": str(path)}, indent=2))
         elif args.command == "scorecard":
             scorecard = build_scorecard(args.bundle, args.agent_name, args.model_id,

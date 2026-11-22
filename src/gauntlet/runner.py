@@ -104,8 +104,13 @@ def verify(bundle):
         if [row.get("case", {}).get("seed") for row in rows] != declared_seeds:
             raise ValueError("Result seeds or ordering do not match evidence manifest")
         suite = evidence.get("suite")
+        protocol = evidence.get("protocol", "single-turn")
         if not isinstance(suite, str) or not suite:
             raise ValueError("Missing suite identifier")
+        if protocol not in {"single-turn", "jsonl-session"}:
+            raise ValueError("Unsupported adapter protocol in evidence manifest")
+        if (suite == "stateful") != (protocol == "jsonl-session"):
+            raise ValueError("Suite and adapter protocol do not match")
         from .adversarial import build_case
         for row in rows:
             if not isinstance(row, dict) or not {"case", "response", "execution", "evaluation"} <= set(row):

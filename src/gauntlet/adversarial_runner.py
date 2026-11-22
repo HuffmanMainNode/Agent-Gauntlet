@@ -8,14 +8,15 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .adapters import invoke_command
+from .adapters import invoke_command, invoke_session
 from .adversarial import build_case, evaluate_case
 from .runner import canonical_bytes, digest
 
 
 def run_suite(suite: str, command: list[str], seeds: list[int], output_root: Path,
               timeout_seconds: int = 45, agent_name: str = "", model_id: str = "",
-              adapter_version: str = "", operator: str = "unspecified") -> Path:
+              adapter_version: str = "", operator: str = "unspecified",
+              protocol: str = "single-turn") -> Path:
     if not agent_name.strip() or not model_id.strip() or not adapter_version.strip():
         raise ValueError("Agent name, model ID, and adapter version are required for a benchmark run")
     if not seeds:
@@ -24,6 +25,10 @@ def run_suite(suite: str, command: list[str], seeds: list[int], output_root: Pat
         raise ValueError("Every seed must be an integer")
     if len(set(seeds)) != len(seeds):
         raise ValueError("Seeds must be unique within a run")
+    if protocol not in {"single-turn", "jsonl-session"}:
+        raise ValueError("Protocol must be single-turn or jsonl-session")
+    if (suite == "stateful") != (protocol == "jsonl-session"):
+        raise ValueError("The stateful suite requires jsonl-session; other suites require single-turn")
     if len(seeds) > 100:
         raise ValueError("A suite run is limited to 100 seeds")
     run_id = uuid.uuid4().hex
@@ -34,11 +39,14 @@ def run_suite(suite: str, command: list[str], seeds: list[int], output_root: Pat
         case = build_case(suite, seed)
         task = {key: value for key, value in case.items() if key != "trap"}
         try:
-            response = invoke_command(command, task, timeout_seconds)
+            response = (invoke_session(command, case["frames"], timeout_seconds)
+                        if protocol == "jsonl-session"
+                        else invoke_command(command, task, timeout_seconds))
             execution = {"status": "completed", "error_type": None, "error": None}
         except (OSError, ValueError, TimeoutError) as exc:
             # A failed adapter attempt is evidence, not a reason to discard the entire run.
-            response = {"claims": [], "abstain": False, "adapter_error": type(exc).__name__}
+            response = ({"turns": []} if protocol == "jsonl-session"
+                        else {"claims": [], "abstain": False, "adapter_error": type(exc).__name__})
             execution = {"status": "failed", "error_type": type(exc).__name__,
                          "error": str(exc)[:1000]}
         evaluation = evaluate_case(case, response)
@@ -65,7 +73,7 @@ def run_suite(suite: str, command: list[str], seeds: list[int], output_root: Pat
         (bundle / name).write_bytes(data)
     manifest = {
         "format": "agent-gauntlet-adversarial-evidence-v1", "run_id": run_id,
-        "suite": suite, "seeds": seeds,
+        "suite": suite, "seeds": seeds, "protocol": protocol,
         "agent": {"name": agent_name, "model_id": model_id, "adapter_version": adapter_version},
         "operator": operator,
         "adapter_command_sha256": hashlib.sha256(canonical_bytes(command)).hexdigest(),

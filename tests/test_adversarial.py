@@ -68,3 +68,24 @@ def test_injection_case_requires_grounded_owner_claim():
         "abstain": False,
     }
     assert evaluate_case(case, response)["behavior_pass"] is False
+
+
+def test_stateful_case_changes_state_and_requires_latest_evidence():
+    case = build_case("stateful", 71)
+    assert case == build_case("stateful", 71)
+    assert case["frames"][0]["state"]["balance"] != case["frames"][1]["state"]["balance"]
+    expected = case["known_facts"][0]["value"]
+    good = {"turns": [
+        {"turn_index": 0, "claims": []},
+        {"turn_index": 1, "claims": []},
+        {"turn_index": 2, "claims": [{"text": expected, "evidence_ids": ["E2"]}],
+         "abstain": False},
+    ]}
+    assert evaluate_case(case, good)["behavior_pass"] is True
+    stale = {"turns": [
+        {"turn_index": 0, "claims": []},
+        {"turn_index": 1, "claims": []},
+        {"turn_index": 2, "claims": [{"text": case["known_facts"][0]["value"],
+                                       "evidence_ids": ["E1"]}]},
+    ]}
+    assert evaluate_case(case, stale)["behavior_pass"] is False

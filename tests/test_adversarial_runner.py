@@ -86,3 +86,33 @@ def test_verifier_rejects_case_not_matching_declared_seed(tmp_path):
     import pytest
     with pytest.raises(ValueError, match="deterministic generator"):
         verify(bundle)
+
+
+def test_stateful_jsonl_session_tracks_superseding_update(tmp_path):
+    code = (
+        "import json,sys; state={}; "
+        "[(lambda f: (state.update(f.get('state', {})), "
+        "print(json.dumps({'turn_index': f['turn_index'], 'claims': "
+        "([{'text': str(state['balance']), 'evidence_ids': ['E2']}] if f['event']=='query' else [])}))))"
+        "(json.loads(line)) for line in sys.stdin]"
+    )
+    bundle = run_suite("stateful", [sys.executable, "-c", code], [61, 62], tmp_path,
+                      agent_name="Session Agent", model_id="example/session-v1",
+                      adapter_version="adapter-1", protocol="jsonl-session")
+    rows = json.loads((bundle / "results.json").read_text())
+    evidence = json.loads((bundle / "evidence.json").read_text())
+    assert evidence["protocol"] == "jsonl-session"
+    assert all(row["evaluation"]["behavior_pass"] for row in rows)
+    assert all(row["evaluation"]["turns_completed"] == 3 for row in rows)
+    assert verify(bundle)["valid"] is True
+
+
+def test_stateful_session_rejects_missing_turn_response(tmp_path):
+    code = "import json,sys; print(json.dumps({'turn_index': 0, 'claims': []}))"
+    bundle = run_suite("stateful", [sys.executable, "-c", code], [63], tmp_path,
+                      agent_name="Session Agent", model_id="example/session-v1",
+                      adapter_version="adapter-1", protocol="jsonl-session")
+    rows = json.loads((bundle / "results.json").read_text())
+    assert rows[0]["execution"]["status"] == "failed"
+    assert rows[0]["evaluation"]["score"] == 0
+    assert verify(bundle)["valid"] is True
