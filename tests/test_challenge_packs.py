@@ -46,7 +46,9 @@ def test_permissions_provenance_and_scoring_are_declared():
             "network": False,
             "filesystem": "bundled-fixture-only",
             "execute_submission_code": False,
+            "tools": manifest["permissions"]["tools"],
         }
+        assert set(manifest["permissions"]["tools"]) <= {"lookup_evidence", "calculate_sum", "transient_lookup"}
         scoring = manifest["scoring"]
         assert scoring["behavior_weight"] + scoring["traceability_weight"] + scoring["format_weight"] == 100
         assert manifest["limits"]["external_dependencies"] is False
