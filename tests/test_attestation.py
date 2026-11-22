@@ -60,7 +60,7 @@ def test_openssh_sign_and_verify_scorecard_root(tmp_path):
     identity="ci-agent@example.invalid"
     namespace="agent-gauntlet"
     allowed=tmp_path/"allowed_signers"
-    allowed.write_text(f'{identity} namespaces="{namespace}" {pub[0]} {pub[1]}\n')
+    allowed.write_text(f'{identity} namespaces="{namespace}" {pub[0]} {pub[1]}' + chr(10))
     signature=sign_scorecard(card,key,identity,tmp_path/"scorecard.json.sig",namespace)
     scorecard_path=write_scorecard(card,str(tmp_path/"scorecard.json"))
     report=verify_scorecard(str(scorecard_path),str(signature),str(allowed),identity,namespace)
