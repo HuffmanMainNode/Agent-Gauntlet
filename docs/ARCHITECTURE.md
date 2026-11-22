@@ -20,6 +20,10 @@ The local command adapter is implemented. The experimental persistent-process JS
 
 Four bundled synthetic reference programs run across 14 profile/suite combinations using a fixed seed inventory. The standard CI baseline uses 25 seeds per run (350 cases), verifies each evidence bundle, and uploads the baseline index plus bundles as a workflow artifact. These controls calibrate evaluator sensitivity; they are not external model results.
 
+### GRI and federated admission
+
+The GRI combines the ten declarative challenge domains with explicit coverage and hard security penalties. Permission violations and injection breaches force the affected domain to zero. Scorecards embed their evaluated pack results, commit canonical result hashes into the OpenSSH-signed provenance payload, and recompute the GRI during verification. The optional local leaderboard gate requires a registered signer, valid signature, six executable suites with at least 25 unique seeds per suite, and complete ten-domain coverage. This is a custody and completeness gate, not a truth oracle. See [GRI and Leaderboard](GRI-AND-LEADERBOARD.md).
+
 ## Evidence and trust boundaries
 - Challenge payloads are parsed as data, not imported as Python.
 - SHA-256 inventories detect payload changes relative to the manifest.

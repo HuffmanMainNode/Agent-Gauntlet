@@ -11,6 +11,8 @@ from .tool_loop import run_tool_loop
 from .containment import ContainmentPolicy
 from .attestation import sign_scorecard
 from .reference_runner import run_reference_matrix, verify_reference_baseline
+from .gri import build_gri, DEFAULT_DOMAINS
+from .leaderboard import verify_leaderboard_directory
 
 
 def main():
@@ -49,6 +51,14 @@ def main():
     reference.add_argument("--output", default="artifacts/reference")
     verify_reference = sub.add_parser("verify-reference", help="verify a reference baseline and all linked evidence bundles")
     verify_reference.add_argument("--baseline", required=True)
+    gri_parser = sub.add_parser("gri", help="calculate a coverage-aware cross-domain GRI from pack result files")
+    gri_parser.add_argument("--result", action="append", default=[], help="pack result JSON; repeat for each domain")
+    gri_parser.add_argument("--output", default="artifacts/gri.json")
+    board = sub.add_parser("verify-leaderboard", help="enforce registered signer, GRI coverage, and minimum seed gate")
+    board.add_argument("--directory", default="leaderboard/submissions")
+    board.add_argument("--allowed-signers", default="leaderboard/allowed_signers")
+    board.add_argument("--registered-signers", default="leaderboard/registered_signers.json")
+    board.add_argument("--minimum-seeds", type=int, default=25)
     card = sub.add_parser("scorecard", help="build a public scorecard from verified adversarial evidence bundles")
     card.add_argument("--bundle", action="append", required=True, help="evidence bundle directory; repeat for each suite")
     card.add_argument("--agent-name", required=True)
@@ -56,6 +66,7 @@ def main():
     card.add_argument("--adapter-version", required=True)
     card.add_argument("--operator", default="unspecified")
     card.add_argument("--output", default="scorecard.json")
+    card.add_argument("--pack-result", action="append", default=[], help="evaluated challenge pack result JSON; repeat for each domain")
     card.add_argument("--repo-commit", help="explicit source repository commit to include in provenance")
     card.add_argument("--signing-key", help="OpenSSH private key used to sign the canonical bundle root")
     card.add_argument("--signer-identity", help="identity registered in the verifier allowed_signers file")
@@ -122,10 +133,15 @@ def main():
                                    ContainmentPolicy(mode="best-effort", wall_time_ms=args.timeout * 1000,
                                                      max_stdout_bytes=challenge.manifest["limits"]["max_output_bytes"]))
             evaluation = evaluate_response(challenge, result["final_commit"])
+            evaluation["permission_violation"] = bool(result["permission_violations"])
             if result["permission_violations"]:
                 evaluation["passed"] = False
                 evaluation["score"] = 0.0
             result["pack_evaluation"] = evaluation
+            result["pack_id"] = challenge.pack_id
+            result["score"] = evaluation["score"]
+            result["permission_violation"] = evaluation["permission_violation"]
+            result["injection_breach"] = evaluation["injection_breach"]
             output = Path(args.output)
             output.mkdir(parents=True, exist_ok=True)
             report = output / f"{args.name}.tool-loop.json"
@@ -143,9 +159,23 @@ def main():
                               "seed_start": args.seed_start}, indent=2))
         elif args.command == "verify-reference":
             print(json.dumps(verify_reference_baseline(args.baseline), indent=2))
+        elif args.command == "gri":
+            results = [json.loads(Path(raw).read_text(encoding="utf-8")) for raw in args.result]
+            report = build_gri(results, DEFAULT_DOMAINS)
+            output = Path(args.output)
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(json.dumps(report, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            print(json.dumps(report, indent=2))
+            if not report["complete"]:
+                return 1
+        elif args.command == "verify-leaderboard":
+            report = verify_leaderboard_directory(args.directory, args.allowed_signers,
+                                                  args.registered_signers, args.minimum_seeds)
+            print(json.dumps(report, indent=2))
         elif args.command == "scorecard":
             scorecard = build_scorecard(args.bundle, args.agent_name, args.model_id,
-                                        args.adapter_version, args.operator, repo_commit=args.repo_commit)
+                                        args.adapter_version, args.operator, repo_commit=args.repo_commit,
+                                        pack_result_paths=args.pack_result)
             signature = None
             if args.signing_key:
                 if not args.signer_identity:
@@ -160,7 +190,7 @@ def main():
             print(json.dumps({"scorecard": str(path), "scorecard_sha256": scorecard["scorecard_sha256"],
                               "balanced_behavior_index": scorecard["balanced_behavior_index"],
                               "suite_count": scorecard["benchmark"]["suite_count"],
-                              "case_count": scorecard["benchmark"]["case_count"], "signature": str(signature) if signature else None}, indent=2))
+                              "case_count": scorecard["benchmark"]["case_count"], "gri_coverage": scorecard["gri"]["coverage_ratio"], "gri_missing_domains": scorecard["gri"]["missing_domains"], "signature": str(signature) if signature else None}, indent=2))
         else:
             print(json.dumps(verify_scorecard(args.scorecard, args.signature, args.allowed_signers,
                                              args.signer_identity, args.namespace), indent=2))

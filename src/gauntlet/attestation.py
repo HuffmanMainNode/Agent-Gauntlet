@@ -67,7 +67,8 @@ def _challenge_hashes(repo_root: Path) -> dict[str, str]:
 
 
 def build_provenance(bundle_paths: list[str], repo_root: str | Path | None = None,
-                     repo_commit: str | None = None) -> dict[str, Any]:
+                     repo_commit: str | None = None,
+                     additional_files: list[str] | None = None) -> dict[str, Any]:
     if not bundle_paths:
         raise AttestationError("at least one evidence bundle is required")
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[2]
@@ -105,6 +106,31 @@ def build_provenance(bundle_paths: list[str], repo_root: str | Path | None = Non
                     "path": f"bundles/{suite}/{run_id}/{relative}",
                     "sha256": digest(path.read_bytes()),
                 })
+    pack_result_count = 0
+    pack_result_hashes = []
+    for raw in additional_files or []:
+        candidate = Path(raw)
+        if candidate.is_symlink() or not candidate.is_file():
+            raise AttestationError(f"additional provenance file missing or symlinked: {candidate}")
+        raw_bytes = candidate.read_bytes()
+        try:
+            result = json.loads(raw_bytes.decode("utf-8"))
+        except (UnicodeError, json.JSONDecodeError) as exc:
+            raise AttestationError(f"additional provenance file is not valid JSON: {candidate}") from exc
+        if not isinstance(result, dict) or not isinstance(result.get("pack_id"), str):
+            raise AttestationError(f"additional provenance file lacks a pack_id: {candidate}")
+        pack_id = result["pack_id"]
+        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", pack_id) or pack_id not in packs:
+            raise AttestationError("additional provenance file has an unknown or invalid pack_id")
+        canonical_result = canonical_bytes(result)
+        result_hash = digest(canonical_result)
+        raw_seed = str(result.get("seed", "unspecified"))
+        seed = raw_seed if re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", raw_seed) and ".." not in raw_seed else "seed-" + digest(raw_seed.encode())[:16]
+        entries.append({"path": f"pack-results/{pack_id}/seed-{seed}/{result_hash}.json",
+                        "sha256": result_hash})
+        pack_result_hashes.append({"pack_id": pack_id, "seed": result.get("seed", "unspecified"),
+                                    "sha256": result_hash})
+        pack_result_count += 1
     entries.sort(key=lambda item: item["path"])
     if len({item["path"] for item in entries}) != len(entries):
         raise AttestationError("provenance contains duplicate canonical paths")
@@ -115,12 +141,14 @@ def build_provenance(bundle_paths: list[str], repo_root: str | Path | None = Non
         "bundle_root_sha256": root_hash,
         "bundle_file_count": sum(1 for item in entries if item["path"].startswith("bundles/")),
         "challenge_pack_count": len(packs),
+        "pack_result_count": pack_result_count,
+        "pack_result_hashes": sorted(pack_result_hashes, key=lambda item: (item["pack_id"], str(item["seed"]), item["sha256"])),
         "root_algorithm": "sha256(sorted-path-hash-pairs-v1)",
     }
 
 
 def attestation_payload(provenance: dict[str, Any]) -> bytes:
-    required = {"repo_commit", "challenge_pack_hashes", "bundle_root_sha256", "root_algorithm"}
+    required = {"repo_commit", "challenge_pack_hashes", "bundle_root_sha256", "root_algorithm", "pack_result_count", "pack_result_hashes"}
     if not isinstance(provenance, dict) or not required <= provenance.keys():
         raise AttestationError("provenance is incomplete")
     root_hash = provenance["bundle_root_sha256"]
@@ -137,12 +165,24 @@ def attestation_payload(provenance: dict[str, Any]) -> bytes:
         raise AttestationError("challenge_pack_hashes must map pack IDs to SHA-256 digests")
     if provenance["root_algorithm"] != "sha256(sorted-path-hash-pairs-v1)":
         raise AttestationError("unsupported provenance root algorithm")
+    result_hashes = provenance["pack_result_hashes"]
+    if (type(provenance["pack_result_count"]) is not int or provenance["pack_result_count"] < 0
+            or not isinstance(result_hashes, list)
+            or len(result_hashes) != provenance["pack_result_count"]):
+        raise AttestationError("pack-result count and hash inventory are inconsistent")
+    for item in result_hashes:
+        if (not isinstance(item, dict) or not isinstance(item.get("pack_id"), str)
+                or not isinstance(item.get("sha256"), str) or len(item["sha256"]) != 64
+                or any(char not in "0123456789abcdef" for char in item["sha256"])):
+            raise AttestationError("pack-result hash inventory contains an invalid entry")
     return canonical_bytes({
         "format": ATTESTATION_FORMAT,
         "repo_commit": provenance["repo_commit"],
         "challenge_pack_hashes": provenance["challenge_pack_hashes"],
         "bundle_root_sha256": root_hash,
         "root_algorithm": provenance["root_algorithm"],
+        "pack_result_count": provenance["pack_result_count"],
+        "pack_result_hashes": provenance["pack_result_hashes"],
     })
 
 
