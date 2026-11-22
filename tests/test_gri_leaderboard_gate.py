@@ -49,6 +49,9 @@ def _submission(tmp_path, *, identity="registered@example.invalid",
     directory = tmp_path / "submissions"
     directory.mkdir(exist_ok=True)
     suites = {name: {"cases": seed_cases} for name in leaderboard.REQUIRED_LEADERBOARD_SUITES}
+    evidence = [{"suite": name, "run_id": f"run-{name}", "seeds": list(range(seed_cases)),
+                 "evidence_sha256": "a" * 64, "results_sha256": "b" * 64,
+                 "verified_artifacts": []} for name in leaderboard.REQUIRED_LEADERBOARD_SUITES]
     domains = sorted(DEFAULT_DOMAINS) if complete_gri else sorted(DEFAULT_DOMAINS)[:-1]
     evidence = [{"suite": name, "seeds": list(range(seed_cases))}
                 for name in leaderboard.REQUIRED_LEADERBOARD_SUITES]
@@ -59,10 +62,10 @@ def _submission(tmp_path, *, identity="registered@example.invalid",
         "attestation": {"status": "signed", "identity": identity,
                         "signature_file": "submission.json.sig",
                         "namespace": "agent-gauntlet"},
-        "benchmark": {"suites": suites},
+        "benchmark": {"suite_count": len(suites), "case_count": seed_cases * len(suites), "suites": suites},
         "gri": {"coverage_ratio": 1.0 if complete_gri else 0.9,
                 "missing_domains": [] if complete_gri else domains[-1:],
-                "complete": complete_gri, "expected_domains": domains,
+                "complete": complete_gri, "expected_domains": sorted(DEFAULT_DOMAINS),
                 "composite_score": 97.5},
     }
     (directory / "submission.json").write_text(json.dumps(card), encoding="utf-8")
