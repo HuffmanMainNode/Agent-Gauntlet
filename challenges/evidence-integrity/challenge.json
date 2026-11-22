@@ -56,6 +56,22 @@
         "behavior",
         "conflict_ids"
       ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "facts",
+      "expected": [
+        "Two primary records disagree on contract status."
+      ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "not_established",
+      "expected": [
+        "Whether the contract is currently active or revoked."
+      ]
     }
   ]
 }
