@@ -156,6 +156,8 @@ def verify_leaderboard_directory(directory: str, allowed_signers: str,
     if len(identities) != len(set(identities)):
         raise ValueError("registered signer identities must be unique")
     submissions = sorted(path for path in submission_dir.glob("*.json") if path.is_file())
+    if not submissions:
+        raise ValueError("leaderboard submission directory is empty")
     verified = []
     for path in submissions:
         card = json.loads(path.read_text(encoding="utf-8"))
