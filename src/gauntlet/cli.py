@@ -10,6 +10,7 @@ from .pack_runner import discover_pack_ids, evaluate_response_file, evaluate_res
 from .tool_loop import run_tool_loop
 from .containment import ContainmentPolicy
 from .attestation import sign_scorecard
+from .reference_runner import run_reference_matrix, verify_reference_baseline
 
 
 def main():
@@ -42,6 +43,12 @@ def main():
     tool_loop.add_argument("--adapter-json", required=True, help="JSON argument array for a trusted local agent")
     tool_loop.add_argument("--timeout", type=int, default=30)
     tool_loop.add_argument("--output", default="artifacts/tool-loop")
+    reference = sub.add_parser("reference", help="run the deterministic 25-seed reference benchmark matrix")
+    reference.add_argument("--seed-start", type=int, default=1)
+    reference.add_argument("--seed-count", type=int, default=25)
+    reference.add_argument("--output", default="artifacts/reference")
+    verify_reference = sub.add_parser("verify-reference", help="verify a reference baseline and all linked evidence bundles")
+    verify_reference.add_argument("--baseline", required=True)
     card = sub.add_parser("scorecard", help="build a public scorecard from verified adversarial evidence bundles")
     card.add_argument("--bundle", action="append", required=True, help="evidence bundle directory; repeat for each suite")
     card.add_argument("--agent-name", required=True)
@@ -127,6 +134,15 @@ def main():
                               "retry_loop_count": result["retry_loop_count"], "score_adjustment": result["score_adjustment"], "pack_score": evaluation["score"], "pack_passed": evaluation["passed"]}, indent=2))
             if not evaluation["passed"] or result["permission_violations"]:
                 return 1
+        elif args.command == "reference":
+            if args.seed_start < 0 or not 1 <= args.seed_count <= 100:
+                raise ValueError("--seed-start must be non-negative and --seed-count must be 1..100")
+            seeds = list(range(args.seed_start, args.seed_start + args.seed_count))
+            path = run_reference_matrix(args.output, seeds)
+            print(json.dumps({"baseline": str(path), "seed_count": args.seed_count,
+                              "seed_start": args.seed_start}, indent=2))
+        elif args.command == "verify-reference":
+            print(json.dumps(verify_reference_baseline(args.baseline), indent=2))
         elif args.command == "scorecard":
             scorecard = build_scorecard(args.bundle, args.agent_name, args.model_id,
                                         args.adapter_version, args.operator, repo_commit=args.repo_commit)

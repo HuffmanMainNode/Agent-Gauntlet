@@ -28,3 +28,17 @@ jobs:
         run: |
           python -m gauntlet run --challenge repository-reality-check --agent demo-good
           python -m gauntlet verify --bundle artifacts/LATEST
+
+      - name: Run and verify 25-seed reference baseline
+        if: matrix.python-version == '3.11'
+        run: |
+          python -m gauntlet reference --output artifacts/reference
+          python -m gauntlet verify-reference --baseline artifacts/reference/reference-baseline.json
+      - name: Upload deterministic reference baseline
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-gauntlet-reference-baseline
+          path: artifacts/reference/
+          if-no-files-found: error
+          retention-days: 90
