@@ -134,7 +134,15 @@ def _validate_manifest(m, pack_id):
 def discover_pack_ids(root=None):
     base = Path(root) if root is not None else ROOT / "challenges"
     if not base.is_dir(): raise PackValidationError(f"challenge directory not found: {base}")
-    return sorted(p.name for p in base.iterdir() if p.is_dir() and PACK_ID.fullmatch(p.name) and (p/"challenge.json").is_file())
+    found = []
+    for child in base.iterdir():
+        if not child.is_dir() or not PACK_ID.fullmatch(child.name) or not (child / "challenge.json").is_file():
+            continue
+        # Legacy fixture-runner challenges are not declarative packs.
+        manifest = _read_json(child / "challenge.json", 65536)
+        if isinstance(manifest.get("scoring"), dict) and manifest["scoring"].get("contract") == "declarative-challenge-v1":
+            found.append(child.name)
+    return sorted(found)
 
 def load_pack(pack_id, root=None):
     if not isinstance(pack_id,str) or not PACK_ID.fullmatch(pack_id): raise PackValidationError("pack id must be a lowercase slug")
