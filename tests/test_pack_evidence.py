@@ -116,3 +116,29 @@ def test_pack_run_verifier_rejects_tampered_transcript(tmp_path, monkeypatch):
     results_path.write_text(json.dumps(rows), encoding="utf-8")
     with pytest.raises(PackValidationError, match="digest mismatch"):
         verify_pack_suite(bundle)
+
+
+def test_pack_run_preserves_failed_attempts(tmp_path, monkeypatch):
+    import gauntlet.tool_loop as tool_loop
+
+    def failing_run(command, task, fixture, allowed_tools, policy, artifact_root):
+        run_dir = Path(artifact_root) / "failed-run"
+        run_dir.mkdir(parents=True)
+        containment = {"filesystem_sandboxed": False}
+        execution = {"returncode": -9, "timed_out": True, "stdout_bytes": 0,
+                     "stderr_bytes": 0, "stdout_truncated": False,
+                     "stderr_truncated": False}
+        (run_dir / "containment.json").write_text(json.dumps(containment), encoding="utf-8")
+        (run_dir / "execution.json").write_text(json.dumps(execution), encoding="utf-8")
+        raise TimeoutError("adapter did not commit")
+
+    monkeypatch.setattr(tool_loop, "run_tool_loop", failing_run)
+    bundle = run_pack_suite("technical-reasoning", ["python", "slow-agent.py"], [5],
+                            tmp_path, "slow-agent", "v1")
+    report = verify_pack_suite(bundle)
+    assert report["valid"] is True
+    assert report["execution_failures"] == 1
+    rows = json.loads((bundle / "results.json").read_text(encoding="utf-8"))
+    assert rows[0]["status"] == "failed"
+    assert rows[0]["error_type"] == "TimeoutError"
+    assert len(rows[0]["failure_artifacts"]) == 2
