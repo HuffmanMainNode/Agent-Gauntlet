@@ -38,6 +38,8 @@ def test_scorecard_tampering_is_detected(tmp_path):
 def test_duplicate_suite_is_rejected(tmp_path):
     import sys
     code = "import json,sys; json.load(sys.stdin); print(json.dumps({'claims': [], 'abstain': True}))"
-    bundle = run_suite("hallucination", [sys.executable, "-c", code], [1], tmp_path / "runs")
+    bundle = run_suite("hallucination", [sys.executable, "-c", code], [1], tmp_path / "runs",
+                       agent_name="Example Agent", model_id="example/model-v1",
+                       adapter_version="adapter-1", operator="unspecified")
     with pytest.raises(ValueError, match="Duplicate suite"):
         build_scorecard([str(bundle), str(bundle)], "Example Agent", "example/model-v1", "adapter-1")
