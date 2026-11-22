@@ -199,8 +199,10 @@ def _sha256(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def _score_tool_loop(pack, result):
+def _score_tool_loop(pack, result, seed=None):
     evaluation = evaluate_response(pack, result["final_commit"])
+    if seed is not None:
+        evaluation["seed"] = seed
     evaluation["base_score"] = evaluation["score"]
     evaluation["tool_loop_adjustment"] = result["score_adjustment"]
     evaluation["score"] = round(max(0.0, min(
@@ -283,7 +285,7 @@ def run_pack_suite(pack_id: str, command: list[str], seeds: list[int],
                 ),
                 artifact_root=artifact_root,
             )
-            evaluation = _score_tool_loop(pack, result)
+            evaluation = _score_tool_loop(pack, result, seed)
             containment_file = Path(result["containment_report_path"])
             execution_file = containment_file.parent / "execution.json"
             rows.append({
@@ -483,7 +485,7 @@ def verify_pack_suite(bundle_path: str | Path) -> dict:
             "permission_violations": tool_loop["permission_violations"],
             "unrecovered_operations": tool_loop["unrecovered_operations"],
             "retry_loop_count": tool_loop["retry_loop_count"], "transcript": transcript,
-        })
+        }, row["seed"])
         if recomputed != row.get("evaluation"):
             raise PackValidationError("recorded pack evaluation does not match deterministic recomputation")
     expected_summary = {
