@@ -1,0 +1,23 @@
+{
+  "challenge_id": "scientific-reasoning",
+  "seed": 20261122,
+  "classification": "synthetic",
+  "task": "Assess whether the supplied observational summary establishes that intervention X caused outcome Y. State what can and cannot be concluded.",
+  "evidence": [
+    {
+      "id": "S-001",
+      "source": "observational-summary",
+      "text": "In a non-randomized sample, 62% of participants receiving X improved, compared with 48% of participants not receiving X."
+    },
+    {
+      "id": "S-002",
+      "source": "methods-note",
+      "text": "No random assignment, confounder adjustment, sample size, confidence interval, or preregistered analysis is supplied."
+    }
+  ],
+  "environment": {
+    "network": "disabled",
+    "filesystem": "fixture-only",
+    "submission_execution": "disabled"
+  }
+}
