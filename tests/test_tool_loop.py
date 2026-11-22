@@ -173,9 +173,9 @@ def test_live_session_rejects_boolean_turn_index():
 
 
 def test_best_effort_mode_probes_namespace_capability(monkeypatch):
-    import gauntlet.tool_loop as tool_loop
+    import gauntlet.containment as containment
     calls = []
-    monkeypatch.setattr(tool_loop, "_probe_namespaces",
+    monkeypatch.setattr(containment, "_probe_namespaces",
                         lambda env: calls.append(dict(env)) or False)
     code = (
         "import json,sys; sys.stdin.readline(); "
