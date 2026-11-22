@@ -66,6 +66,7 @@ def build_scorecard(bundle_paths: list[str], agent_name: str, model_id: str,
     balanced = round(product ** (1 / len(rates)) * 100, 2)
     pack_results = [json.loads(Path(raw).read_text(encoding="utf-8")) for raw in (pack_result_paths or [])]
     gri = build_gri(pack_results, DEFAULT_DOMAINS)
+    provenance = build_provenance(bundle_paths, repo_commit=repo_commit, additional_files=pack_result_paths)
     now = datetime.now(timezone.utc).isoformat()
     scorecard = {
         "format": "agent-gauntlet-scorecard-v1",
@@ -77,7 +78,7 @@ def build_scorecard(bundle_paths: list[str], agent_name: str, model_id: str,
         "balanced_behavior_index": balanced,\n        "gri": gri,
         "index_explanation": "Geometric mean of the submitted suites' behavior pass rates. Not a universal intelligence, safety, or capability score. Compare only identical challenge versions and suite coverage.",
         "evidence": evidence_refs,
-        "provenance": build_provenance(bundle_paths, repo_commit=repo_commit),
+        "provenance": provenance,
         "environment": {"python": platform.python_version(), "platform": platform.platform()},
         "attestation": {"status": "unsigned", "scheme": None, "identity": None, "namespace": None, "signature_file": None, "signed_object": None},
         "limitations": [
