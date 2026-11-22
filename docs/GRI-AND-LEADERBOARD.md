@@ -49,7 +49,7 @@ A submission is eligible for the local verification gate only when all condition
 
 1. The scorecard's detached OpenSSH signature verifies against the operator's `allowed_signers` trust file.
 2. The signer identity is present in the operator-maintained `registered_signers.json`.
-3. All six executable adversarial suites are present, each with at least 25 distinct seed values and at least 25 cases.
+3. All six executable adversarial suites are present, each with at least 25 distinct seed values and an exact match between declared case counts and seed inventories.
 4. The GRI covers all ten expected challenge domains, with no missing domains.
 
 The gate does not register signers, publish a global leaderboard, or establish behavioral truth. Each deployment owns its trust policy and signer registry.
@@ -75,3 +75,8 @@ python -m gauntlet verify-leaderboard \
 ```
 
 The default gate fails closed when trust files or submissions are missing. Signatures establish key-holder custody over the signed provenance digest, not agent identity, truthful behavior, or semantic correctness.
+
+
+## Evidence boundary
+
+The signature binds the submitter's declared scorecard claims and the provenance digest. The current local gate verifies the signature and internal consistency of those declarations; it does not fetch external evidence archives or independently replay every submitted adapter run. A registered signer can still sign inaccurate claims. Independent reproduction remains a separate evidence level and must not be inferred from a valid signature.
