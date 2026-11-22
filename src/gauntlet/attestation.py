@@ -73,17 +73,29 @@ def build_provenance(bundle_paths: list[str], repo_root: str | Path | None = Non
     entries = [{"path": "repository/commit", "sha256": digest(commit.encode("utf-8"))}]
     for pack_id, pack_hash in sorted(packs.items()):
         entries.append({"path": f"challenge-packs/{pack_id}", "sha256": pack_hash})
-    resolved_bundles = sorted(Path(raw).resolve() for raw in bundle_paths)
-    for index, bundle in enumerate(resolved_bundles):
+    resolved_bundles = []
+    for raw in bundle_paths:
+        candidate = Path(raw)
+        if candidate.is_symlink():
+            raise AttestationError(f"evidence bundle root may not be a symlink: {candidate}")
+        bundle = candidate.resolve()
         if not bundle.is_dir():
             raise AttestationError(f"evidence bundle not found: {bundle}")
+        try:
+            evidence = json.loads((bundle / "evidence.json").read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise AttestationError(f"bundle has no readable evidence manifest: {bundle}") from exc
+        suite = str(evidence.get("suite") or evidence.get("challenge_id") or "bundle")
+        run_id = str(evidence.get("run_id") or digest((bundle / "evidence.json").read_bytes())[:16])
+        resolved_bundles.append((suite, run_id, bundle))
+    for suite, run_id, bundle in sorted(resolved_bundles, key=lambda item: (item[0], item[1])):
         for path in sorted(bundle.rglob("*")):
             if path.is_symlink():
                 raise AttestationError(f"symlinks are not accepted in evidence bundles: {path}")
             if path.is_file():
                 relative = path.relative_to(bundle).as_posix()
                 entries.append({
-                    "path": f"bundles/{index:04d}/{bundle.name}/{relative}",
+                    "path": f"bundles/{suite}/{run_id}/{relative}",
                     "sha256": digest(path.read_bytes()),
                 })
     entries.sort(key=lambda item: item["path"])
