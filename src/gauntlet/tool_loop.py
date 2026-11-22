@@ -61,8 +61,6 @@ class ToolDispatcher:
             self.attempts[operation_id] = attempt
             if attempt <= failures:
                 exhausted = attempt > max_retries
-                if exhausted:
-                    self.exhausted.add(operation_id)
                 return {
                     "status": 503, "tool": tool, "error": (
                         "retry_budget_exhausted" if exhausted else "service_unavailable"
@@ -73,7 +71,6 @@ class ToolDispatcher:
                     "retry_budget_exhausted": exhausted,
                 }
             if attempt > max_retries + 1:
-                self.exhausted.add(operation_id)
                 return {"status": 503, "tool": tool, "error": "retry_budget_exhausted",
                         "operation_id": operation_id, "attempt": attempt,
                         "max_retries": max_retries, "retry_budget_exhausted": True}
