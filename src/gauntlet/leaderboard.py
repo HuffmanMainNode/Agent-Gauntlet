@@ -199,11 +199,18 @@ def verify_leaderboard_directory(directory: str, allowed_signers: str,
         )
         benchmark = card.get("benchmark", {})
         suites = benchmark.get("suites", {}) if isinstance(benchmark, dict) else {}
-        if not isinstance(suites, dict) or set(REQUIRED_LEADERBOARD_SUITES) - suites.keys():
-            raise ValueError(f"submission {path.name} does not cover all required suites")
+        if (not isinstance(suites, dict) or set(suites) != set(REQUIRED_LEADERBOARD_SUITES)
+                or benchmark.get("suite_count") != len(REQUIRED_LEADERBOARD_SUITES)
+                or benchmark.get("case_count") != sum(
+                    item.get("cases", -1) for item in suites.values() if isinstance(item, dict)
+                )):
+            raise ValueError(f"submission {path.name} does not have a consistent complete suite inventory")
         evidence_refs = card.get("evidence", [])
-        if not isinstance(evidence_refs, list):
-            raise ValueError(f"submission {path.name} has malformed evidence references")
+        if (not isinstance(evidence_refs, list)
+                or {item.get("suite") for item in evidence_refs if isinstance(item, dict)}
+                   != set(REQUIRED_LEADERBOARD_SUITES)
+                or len(evidence_refs) != len(REQUIRED_LEADERBOARD_SUITES)):
+            raise ValueError(f"submission {path.name} has incomplete or malformed evidence references")
         seeds_by_suite = {}
         for reference in evidence_refs:
             if not isinstance(reference, dict) or reference.get("suite") in seeds_by_suite:
@@ -216,6 +223,7 @@ def verify_leaderboard_directory(directory: str, allowed_signers: str,
         for name in REQUIRED_LEADERBOARD_SUITES:
             if (not isinstance(suites[name], dict) or type(suites[name].get("cases")) is not int
                     or suites[name]["cases"] < minimum_seeds
+                    or len(seeds_by_suite.get(name, [])) != suites[name]["cases"]
                     or len(seeds_by_suite.get(name, [])) < minimum_seeds):
                 raise ValueError(f"submission {path.name} has fewer than {minimum_seeds} unique seeds in a required suite")
         gri = card.get("gri", {})
