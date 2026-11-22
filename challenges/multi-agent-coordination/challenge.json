@@ -57,6 +57,21 @@
         "behavior",
         "conflict_ids"
       ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "supported_fact",
+      "expected": "The source record declares the digest shown in M-001."
+    },
+    {
+      "op": "exact_match",
+      "dimension": "traceability",
+      "path": "required_disclosures",
+      "expected": [
+        "Agent beta provides no comparison artifact.",
+        "Two matching opinions do not independently prove a digest comparison."
+      ]
     }
   ]
 }
