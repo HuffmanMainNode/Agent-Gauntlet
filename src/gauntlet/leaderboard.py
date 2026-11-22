@@ -93,7 +93,9 @@ def write_scorecard(scorecard: dict, output: str) -> Path:
     return path
 
 
-def verify_scorecard(path: str, signature_path: str | None = None,\n                     allowed_signers: str | None = None, signer_identity: str | None = None,\n                     namespace: str = NAMESPACE) -> dict:
+def verify_scorecard(path: str, signature_path: str | None = None,
+                     allowed_signers: str | None = None, signer_identity: str | None = None,
+                     namespace: str = NAMESPACE) -> dict:
     scorecard = json.loads(Path(path).read_text(encoding="utf-8"))
     if scorecard.get("format") != "agent-gauntlet-scorecard-v1":
         raise ValueError("Unsupported scorecard format")
