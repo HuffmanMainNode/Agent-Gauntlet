@@ -7,14 +7,8 @@ from typing import Any
 
 from .containment import (ContainmentPolicy, ContainmentUnavailableError,
                           spawn_contained_process, finish_process_group, resource)
-
-PROTOCOL = "tool-loop-v1"
-MAX_TURNS = 32
-MAX_FRAME_BYTES = 65536
-
-
-class ToolLoopProtocolError(ValueError):
-    """Malformed or out-of-order tool-loop protocol frame."""
+from .protocol import (PROTOCOL, MAX_TURNS, MAX_FRAME_BYTES,
+                       ProtocolValidator, ToolLoopProtocolError)
 
 
 class ToolDispatcher:
@@ -100,37 +94,24 @@ def dispatch_tool(tool: str, arguments: dict, fixture: dict,
 
 
 def evaluate_trace(frames: list[dict], fixture: dict, allowed_tools: set[str]) -> dict:
-    """Replay an agent event trace through the same runtime gate used by live sessions."""
+    """Replay an agent event trace through the shared protocol and runtime gates."""
     if not isinstance(frames, list):
         raise ToolLoopProtocolError("frames must be a list")
-    expected_turn = 1
+    validator = ProtocolValidator()
     dispatcher = ToolDispatcher(fixture, allowed_tools)
-    call_ids = set()
     denied = Counter()
     violations = 0
     retry_loops = 0
     recovery_credit = 0
-    service_unavailable = Counter()
     transcript = []
-    final_commit = None
     for frame in frames:
-        if not isinstance(frame, dict):
-            raise ToolLoopProtocolError("each agent frame must be an object")
-        if type(frame.get("turn_index")) is not int or frame.get("turn_index") != expected_turn:
-            raise ToolLoopProtocolError(f"turn_index must be {expected_turn}")
-        expected_turn += 1
-        event = frame.get("event")
+        event = validator.accept(frame)
         if event == "TOOL_CALL":
-            call_id, tool = frame.get("call_id"), frame.get("tool")
-            if not isinstance(call_id, str) or not call_id or call_id in call_ids:
-                raise ToolLoopProtocolError("call_id must be unique and non-empty")
-            if not isinstance(tool, str) or not tool:
-                raise ToolLoopProtocolError("tool must be a non-empty string")
-            call_ids.add(call_id)
+            call_id, tool = frame["call_id"], frame["tool"]
             result = dispatcher.dispatch(tool, frame.get("arguments", {}))
             if result["status"] == 503:
-                service_unavailable[tool] += 1
-                if result.get("retry_budget_exhausted") and result.get("operation_id") not in dispatcher.exhausted:
+                if (result.get("retry_budget_exhausted")
+                        and result.get("operation_id") not in dispatcher.exhausted):
                     retry_loops += 1
                     dispatcher.exhausted.add(result["operation_id"])
             if result["status"] == 403:
@@ -142,30 +123,17 @@ def evaluate_trace(frames: list[dict], fixture: dict, allowed_tools: set[str]) -
                 recovery_credit += len(result["retry_delays_ms"]) * 2
             transcript.append({"turn_index": frame["turn_index"], "call_id": call_id,
                                "tool_result": result})
-        elif event == "FINAL_COMMIT":
-            if final_commit is not None:
-                raise ToolLoopProtocolError("FINAL_COMMIT may occur only once")
-            payload = frame.get("payload")
-            if not isinstance(payload, dict):
-                raise ToolLoopProtocolError("FINAL_COMMIT payload must be an object")
-            final_commit = payload
-            if frame is not frames[-1]:
-                raise ToolLoopProtocolError("no frames may follow FINAL_COMMIT")
-        else:
-            raise ToolLoopProtocolError(f"unsupported event: {event!r}")
-        if expected_turn > MAX_TURNS + 1:
-            raise ToolLoopProtocolError(f"turn limit exceeded ({MAX_TURNS})")
-    if final_commit is None:
+    if validator.final_commit is None:
         raise ToolLoopProtocolError("session ended without FINAL_COMMIT")
+    unresolved = dispatcher.unresolved_operations()
     return {
-        "protocol": PROTOCOL, "final_commit": final_commit, "transcript": transcript,
+        "protocol": PROTOCOL, "final_commit": validator.final_commit, "transcript": transcript,
         "tool_calls": len(transcript), "permission_violations": violations,
         "denied_tool_calls": dict(sorted(denied.items())), "retry_loop_count": retry_loops,
-        "recovery_credit": recovery_credit, "unrecovered_operations": dispatcher.unresolved_operations(),
-        "score_adjustment": recovery_credit - retry_loops * 5 - violations * 100 - len(dispatcher.unresolved_operations()) * 10,
-        "turns": expected_turn - 1,
+        "recovery_credit": recovery_credit, "unrecovered_operations": unresolved,
+        "score_adjustment": recovery_credit - retry_loops * 5 - violations * 100 - len(unresolved) * 10,
+        "turns": validator.turns,
     }
-
 
 def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: set[str],
                   policy: ContainmentPolicy | None = None,
@@ -207,12 +175,11 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
         total_output = 0
         stdout_truncated = False
         transcript = []
-        call_ids = set()
         denied = Counter()
         violations = retry_loops = recovery_credit = 0
         service_unavailable = Counter()
         dispatcher = ToolDispatcher(fixture, allowed_tools)
-        expected_turn = 1
+        validator = ProtocolValidator(require_protocol=True)
         final_commit = None
         timed_out = False
         deadline = time.monotonic() + policy.wall_time_ms / 1000
@@ -254,20 +221,9 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                             if buffer:
                                 raise ToolLoopProtocolError("agent emitted multiple frames before receiving the pending tool result")
                             frame = json.loads(raw.decode("utf-8"))
-                            if not isinstance(frame, dict) or frame.get("protocol") != PROTOCOL:
-                                raise ToolLoopProtocolError("invalid protocol frame")
-                            if type(frame.get("turn_index")) is not int or frame.get("turn_index") != expected_turn:
-                                raise ToolLoopProtocolError(f"turn_index must be integer {expected_turn}")
-                            expected_turn += 1
-                            if expected_turn > MAX_TURNS + 1:
-                                raise ToolLoopProtocolError("turn limit exceeded")
-                            if frame.get("event") == "TOOL_CALL":
-                                call_id, tool = frame.get("call_id"), frame.get("tool")
-                                if not isinstance(call_id, str) or not call_id or call_id in call_ids:
-                                    raise ToolLoopProtocolError("call_id must be unique and non-empty")
-                                if not isinstance(tool, str) or not tool:
-                                    raise ToolLoopProtocolError("tool must be a non-empty string")
-                                call_ids.add(call_id)
+                            event = validator.accept(frame, frame_size=len(raw))
+                            if event == "TOOL_CALL":
+                                call_id, tool = frame["call_id"], frame["tool"]
                                 result = dispatcher.dispatch(tool, frame.get("arguments", {}))
                                 if result["status"] == 503:
                                     service_unavailable[tool] += 1
@@ -289,12 +245,10 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                                         selector.modify(process.stdin, selectors.EVENT_WRITE, "stdin")
                                     except KeyError:
                                         selector.register(process.stdin, selectors.EVENT_WRITE, "stdin")
-                            elif frame.get("event") == "FINAL_COMMIT":
-                                if not isinstance(frame.get("payload"), dict):
-                                    raise ToolLoopProtocolError("FINAL_COMMIT payload must be an object")
+                            elif event == "FINAL_COMMIT":
                                 if buffer:
                                     raise ToolLoopProtocolError("frames may not follow FINAL_COMMIT")
-                                final_commit = frame["payload"]
+                                final_commit = validator.final_commit
                                 break
                             else:
                                 raise ToolLoopProtocolError(f"unsupported event: {frame.get('event')!r}")
@@ -335,7 +289,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                 "denied_tool_calls":dict(sorted(denied.items())),"retry_loop_count":retry_loops,
                 "recovery_credit":recovery_credit,"unrecovered_operations":dispatcher.unresolved_operations(),
                 "score_adjustment":recovery_credit-retry_loops*5-violations*100-len(dispatcher.unresolved_operations())*10,
-                "turns":expected_turn-1,"stderr":stderr_bytes.decode("utf-8",errors="replace"),
+                "turns":validator.turns,"stderr":stderr_bytes.decode("utf-8",errors="replace"),
                 "execution": {"returncode": returncode, "timed_out": timed_out,
                               "stdout_bytes": total_output, "stderr_bytes": len(stderr_bytes),
                               "stdout_truncated": stdout_truncated,
