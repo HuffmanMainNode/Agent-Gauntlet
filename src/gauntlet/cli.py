@@ -6,7 +6,8 @@ from pathlib import Path
 from .adversarial_runner import run_suite
 from .leaderboard import build_scorecard, verify_scorecard, write_scorecard
 from .runner import run, verify
-from .pack_runner import discover_pack_ids, evaluate_response_file, evaluate_response, load_pack
+from .pack_runner import (discover_pack_ids, evaluate_response_file, evaluate_response,
+                          load_pack, run_pack_suite, verify_pack_suite)
 from .tool_loop import run_tool_loop
 from .containment import ContainmentPolicy
 from .attestation import sign_scorecard
@@ -40,6 +41,17 @@ def main():
     pack.add_argument("--response", help="JSON response file for one pack")
     pack.add_argument("--responses-dir", default="responses", help="directory containing <pack-id>.json responses for --all")
     pack.add_argument("--output", default="artifacts/packs", help="directory for evaluation reports")
+    pack_run = sub.add_parser("pack-run", help="run a trusted local adapter across explicit challenge-pack seeds and emit evidence")
+    pack_run.add_argument("--name", required=True, help="challenge pack identifier")
+    pack_run.add_argument("--adapter-json", required=True, help="JSON argument array for a trusted local agent")
+    pack_run.add_argument("--seeds", default="1,2,3", help="comma-separated non-negative integer seeds; maximum 100")
+    pack_run.add_argument("--adapter-name", required=True)
+    pack_run.add_argument("--adapter-version", required=True)
+    pack_run.add_argument("--operator", default="unspecified")
+    pack_run.add_argument("--timeout", type=int, default=60)
+    pack_run.add_argument("--output", default="artifacts/pack-runs")
+    verify_pack = sub.add_parser("verify-pack-run", help="verify a seeded challenge-pack evidence bundle")
+    verify_pack.add_argument("--bundle", required=True)
     tool_loop = sub.add_parser("tool-loop", help="run an interactive tool-loop-v1 pack session")
     tool_loop.add_argument("--name", required=True, help="challenge pack identifier")
     tool_loop.add_argument("--adapter-json", required=True, help="JSON argument array for a trusted local agent")
@@ -120,6 +132,20 @@ def main():
             print(json.dumps(summary, indent=2))
             if missing or any(not item["passed"] for item in results):
                 return 1
+        elif args.command == "pack-run":
+            command = json.loads(args.adapter_json)
+            if not isinstance(command, list) or not command or not all(isinstance(part, str) and part for part in command):
+                raise ValueError("--adapter-json must be a non-empty JSON array of strings")
+            seeds = [int(value.strip()) for value in args.seeds.split(",") if value.strip()]
+            bundle = run_pack_suite(args.name, command, seeds, args.output,
+                                    args.adapter_name, args.adapter_version,
+                                    args.operator, args.timeout)
+            verification = verify_pack_suite(bundle)
+            print(json.dumps({"bundle": str(bundle), "verification": verification}, indent=2))
+            if verification["execution_failures"] or verification["failed_assertions_or_policy"]:
+                return 1
+        elif args.command == "verify-pack-run":
+            print(json.dumps(verify_pack_suite(args.bundle), indent=2))
         elif args.command == "tool-loop":
             command = json.loads(args.adapter_json)
             if not isinstance(command, list) or not command or not all(isinstance(part, str) and part for part in command):
