@@ -100,3 +100,51 @@ def test_cli_tool_loop_evaluates_final_commit(tmp_path):
     report=json.loads((output/"technical-reasoning.tool-loop.json").read_text())
     assert report["pack_evaluation"]["passed"] is True
     assert report["pack_evaluation"]["score"]==100.0
+
+
+def test_trace_rejects_boolean_turn_index():
+    with pytest.raises(ToolLoopProtocolError, match="turn_index"):
+        evaluate_trace(
+            [{"turn_index": True, "event": "FINAL_COMMIT", "payload": {}}],
+            FIXTURE, set(),
+        )
+
+
+def test_live_session_rejects_boolean_turn_index():
+    code = (
+        "import json,sys; sys.stdin.readline(); "
+        "print(json.dumps({'protocol':'tool-loop-v1','event':'FINAL_COMMIT',"
+        "'turn_index':True,'payload':{}}),flush=True)"
+    )
+    with pytest.raises(ToolLoopProtocolError, match="turn_index"):
+        run_tool_loop([sys.executable, "-c", code], {"task": "test"}, FIXTURE,
+                      {"lookup_evidence"})
+
+
+def test_best_effort_mode_probes_namespace_capability(monkeypatch):
+    import gauntlet.tool_loop as tool_loop
+    calls = []
+    monkeypatch.setattr(tool_loop, "_probe_namespaces",
+                        lambda env: calls.append(dict(env)) or False)
+    code = (
+        "import json,sys; sys.stdin.readline(); "
+        "print(json.dumps({'protocol':'tool-loop-v1','event':'FINAL_COMMIT',"
+        "'turn_index':1,'payload':{}}),flush=True)"
+    )
+    result = run_tool_loop([sys.executable, "-c", code], {"task": "test"}, FIXTURE,
+                           {"lookup_evidence"})
+    assert len(calls) == 1
+    assert result["containment"]["requested_mode"] == "best-effort"
+    assert result["containment"]["effective_mode"] == "rlimit_only"
+    assert result["containment"]["namespaces_active"] == {
+        "user": False, "net": False, "pid": False
+    }
+    assert result["containment"]["filesystem_sandboxed"] is False
+
+
+def test_strict_tool_loop_requires_network_disable():
+    from gauntlet.containment import ContainmentPolicy
+    with pytest.raises(ValueError, match="disable_network"):
+        run_tool_loop([sys.executable, "-c", "pass"], {"task": "test"}, FIXTURE,
+                      {"lookup_evidence"},
+                      ContainmentPolicy(mode="strict", disable_network=False))
