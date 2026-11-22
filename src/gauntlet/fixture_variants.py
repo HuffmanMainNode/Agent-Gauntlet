@@ -35,7 +35,7 @@ def generate_seeded_fixture(base_fixture: dict[str, Any], seed: int) -> dict[str
         raise ValueError("evidence record IDs must be unique")
     evidence.sort(
         key=lambda item: (
-            hashlib.sha256(f"{seed}\\0{item['id']}".encode("utf-8")).digest(),
+            hashlib.sha256(f"{seed}:{item['id']}".encode("utf-8")).digest(),
             item["id"],
         )
     )
