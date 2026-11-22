@@ -211,3 +211,56 @@ def test_live_tool_loop_rewards_only_observed_fixture_retries():
     assert result["recovery_credit"] == 4
     assert result["unrecovered_operations"] == []
     assert result["score_adjustment"] == 4
+
+
+def test_cli_failure_recovery_requires_and_scores_observed_retries(tmp_path):
+    import subprocess
+    code = (
+        "import json,sys\n"
+        "init=json.loads(sys.stdin.readline())\n"
+        "for i in range(1,4):\n"
+        " frame={'protocol':'tool-loop-v1','event':'TOOL_CALL','turn_index':i,"
+        "'call_id':f'r{i}','tool':'transient_lookup','arguments':{'operation_id':'record-3'}}\n"
+        " print(json.dumps(frame),flush=True)\n"
+        " result=json.loads(sys.stdin.readline())\n"
+        " assert result['result']['status'] == (200 if i == 3 else 503)\n"
+        "final={'protocol':'tool-loop-v1','event':'FINAL_COMMIT','turn_index':4,"
+        "'payload':{'behavior':'recover_idempotently','unknowns':['Whether record 3 committed.'],"
+        "'safe_actions':['Verify record 3 by idempotency key or replay with the same key.',"
+        "'Submit records 4 and 5 after resolving record 3.']}}\n"
+        "print(json.dumps(final),flush=True)"
+    )
+    output = tmp_path / "recovery"
+    completed = subprocess.run(
+        [sys.executable, "-m", "gauntlet", "tool-loop", "--name", "failure-recovery",
+         "--adapter-json", json.dumps([sys.executable, "-c", code]), "--output", str(output)],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads((output / "failure-recovery.tool-loop.json").read_text())
+    assert report["recovery_credit"] == 4
+    assert report["pack_evaluation"]["base_score"] == 100.0
+    assert report["pack_evaluation"]["tool_loop_adjustment"] == 4
+    assert report["pack_evaluation"]["recovery_calls"] == 1
+    assert report["pack_evaluation"]["passed"] is True
+
+
+def test_cli_failure_recovery_fails_when_agent_skips_recovery_tool(tmp_path):
+    import subprocess
+    code = (
+        "import json,sys; sys.stdin.readline(); "
+        "print(json.dumps({'protocol':'tool-loop-v1','event':'FINAL_COMMIT','turn_index':1,"
+        "'payload':{'behavior':'recover_idempotently','unknowns':['Whether record 3 committed.'],"
+        "'safe_actions':['Verify record 3 by idempotency key or replay with the same key.',"
+        "'Submit records 4 and 5 after resolving record 3.']}}),flush=True)"
+    )
+    output = tmp_path / "no-recovery"
+    completed = subprocess.run(
+        [sys.executable, "-m", "gauntlet", "tool-loop", "--name", "failure-recovery",
+         "--adapter-json", json.dumps([sys.executable, "-c", code]), "--output", str(output)],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    assert completed.returncode == 1
+    report = json.loads((output / "failure-recovery.tool-loop.json").read_text())
+    assert report["pack_evaluation"]["recovery_evidence_missing"] is True
+    assert report["pack_evaluation"]["passed"] is False
