@@ -29,6 +29,14 @@ def test_seeded_pack_run_emits_verifiable_bundle(tmp_path, monkeypatch):
     transcript = []
 
     def fake_run(command, task, fixture, allowed_tools, policy, artifact_root):
+        run_dir = Path(artifact_root) / "fake-run"
+        run_dir.mkdir(parents=True)
+        containment = {"filesystem_sandboxed": False, "effective_mode": "rlimit_only"}
+        execution = {"returncode": 0, "timed_out": False, "stdout_bytes": 0,
+                     "stderr_bytes": 0, "stdout_truncated": False,
+                     "stderr_truncated": False}
+        (run_dir / "containment.json").write_text(json.dumps(containment), encoding="utf-8")
+        (run_dir / "execution.json").write_text(json.dumps(execution), encoding="utf-8")
         return {
             "protocol": "tool-loop-v1",
             "final_commit": response,
@@ -42,12 +50,9 @@ def test_seeded_pack_run_emits_verifiable_bundle(tmp_path, monkeypatch):
             "unrecovered_operations": [],
             "score_adjustment": 0,
             "turns": 1,
-            "execution": {
-                "returncode": 0, "timed_out": False, "stdout_bytes": 0,
-                "stderr_bytes": 0, "stdout_truncated": False,
-                "stderr_truncated": False,
-            },
-            "containment": {"filesystem_sandboxed": False, "effective_mode": "rlimit_only"},
+            "execution": execution,
+            "containment": containment,
+            "containment_report_path": str(run_dir / "containment.json"),
         }
 
     monkeypatch.setattr(tool_loop, "run_tool_loop", fake_run)
@@ -83,16 +88,23 @@ def test_pack_run_verifier_rejects_tampered_transcript(tmp_path, monkeypatch):
     }
 
     def fake_run(command, task, fixture, allowed_tools, policy, artifact_root):
+        run_dir = Path(artifact_root) / "fake-run"
+        run_dir.mkdir(parents=True)
+        containment = {"filesystem_sandboxed": False}
+        execution = {"returncode": 0, "timed_out": False, "stdout_bytes": 0,
+                     "stderr_bytes": 0, "stdout_truncated": False,
+                     "stderr_truncated": False}
+        (run_dir / "containment.json").write_text(json.dumps(containment), encoding="utf-8")
+        (run_dir / "execution.json").write_text(json.dumps(execution), encoding="utf-8")
         return {
             "protocol": "tool-loop-v1", "final_commit": response, "transcript": [],
             "transcript_sha256": hashlib.sha256(_canonical([])).hexdigest(),
             "tool_calls": 0, "permission_violations": 0, "denied_tool_calls": {},
             "retry_loop_count": 0, "recovery_credit": 0, "unrecovered_operations": [],
             "score_adjustment": 0, "turns": 1,
-            "execution": {"returncode": 0, "timed_out": False, "stdout_bytes": 0,
-                          "stderr_bytes": 0, "stdout_truncated": False,
-                          "stderr_truncated": False},
-            "containment": {"filesystem_sandboxed": False},
+            "execution": execution,
+            "containment": containment,
+            "containment_report_path": str(run_dir / "containment.json"),
         }
 
     monkeypatch.setattr(tool_loop, "run_tool_loop", fake_run)
