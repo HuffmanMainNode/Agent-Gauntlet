@@ -102,3 +102,15 @@ def test_offline_trace_uses_shared_validator_and_rejects_post_commit_frames():
     frames = [final_commit(), tool_call(turn=2)]
     with pytest.raises(ToolLoopProtocolError, match="follow"):
         evaluate_trace(frames, {"challenge_id": "test", "seed": 1}, set())
+
+
+def test_explicit_null_protocol_marker_is_rejected_in_replay():
+    frame = final_commit()
+    frame["protocol"] = None
+    with pytest.raises(ToolLoopProtocolError, match="protocol"):
+        ProtocolValidator().accept(frame)
+
+
+def test_correct_protocol_marker_is_accepted_in_replay():
+    validator = ProtocolValidator()
+    assert validator.accept(final_commit()) == "FINAL_COMMIT"
