@@ -243,7 +243,8 @@
         "bundle_file_count",
         "challenge_pack_count",
         "root_algorithm",
-        "pack_result_count"
+        "pack_result_count",
+        "scorecard_claims_sha256"
       ],
       "properties": {
         "repo_commit": {
@@ -275,6 +276,10 @@
         "pack_result_count": {
           "type": "integer",
           "minimum": 0
+        },
+        "scorecard_claims_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
         }
       }
     },
