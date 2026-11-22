@@ -148,7 +148,7 @@ def attestation_payload(provenance: dict[str, Any]) -> bytes:
 
 def sign_scorecard(scorecard: dict, private_key: str | Path, identity: str,
                    signature_path: str | Path, namespace: str = NAMESPACE) -> Path:
-    if not identity or not namespace or len(identity) > 256 or not re.fullmatch(r"[A-Za-z0-9_.@+-]+", namespace):
+    if not identity or not namespace or len(identity) > 256 or not re.fullmatch(r"[A-Za-z0-9_.@+-]+", identity) or not re.fullmatch(r"[A-Za-z0-9_.@+-]+", namespace):
         raise AttestationError("valid signer identity and namespace are required")
     executable = shutil.which("ssh-keygen")
     if not executable:
