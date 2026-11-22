@@ -120,6 +120,7 @@ def test_scorecard_cli_signs_and_verifies(tmp_path):
 def test_scorecard_recomputes_gri_and_binds_embedded_pack_results(tmp_path):
     import hashlib
     from gauntlet.runner import canonical_bytes
+    from gauntlet.gri import build_gri, DEFAULT_DOMAINS
     bundle=make_bundle(tmp_path)
     result=tmp_path/"evidence-integrity.json"
     result.write_text(json.dumps({"pack_id":"evidence-integrity","seed":1,"score":88,
@@ -131,8 +132,9 @@ def test_scorecard_recomputes_gri_and_binds_embedded_pack_results(tmp_path):
     assert valid["valid"] is True
     data=json.loads(path.read_text(encoding="utf-8"))
     data["pack_results"][0]["score"]=100
+    data["gri"]=build_gri(data["pack_results"], DEFAULT_DOMAINS)
     data.pop("scorecard_sha256")
     data["scorecard_sha256"]=hashlib.sha256(canonical_bytes(data)).hexdigest()
     path.write_bytes(canonical_bytes(data))
-    with pytest.raises(ValueError,match="GRI does not match"):
+    with pytest.raises(ValueError,match="signed provenance hashes"):
         verify_scorecard(str(path))
