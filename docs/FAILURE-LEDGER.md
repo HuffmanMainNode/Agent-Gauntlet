@@ -77,4 +77,6 @@ Never mark a failure closed merely because a later unrelated CI run is green.
 - **Root cause:** The session input serializer used a double-escaped newline delimiter.
 - **Correction:** Changed the serializer to append an actual newline between JSON frames.
 - **Regression coverage:** The persistent-session integration test requires one response for each of three input frames, checks state replacement and latest-evidence citation, and verifies the resulting evidence bundle.
-- **Disposition:** Fixed on branch `feature/multi-turn-session-protocol`; pending final CI verification.
+- **Historical failed workflows:** [45018387153](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45018387153), [45018390260](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45018390260), [45018413453](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45018413453), [45018416413](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45018416413), and [45018435417](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45018435417) all exposed this same defect while the branch was being developed.
+- **Verification:** The corrected branch passed the complete Python 3.11/3.12/3.13 matrix in [workflow 45018506152](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45018506152), and PR #8 was merged as `e4b8dfb7b127d4c0bfc8b11a54d42588e70aa5b6`.
+- **Disposition:** Closed by correction, regression test, and passing cross-version CI. Historical failed workflows remain available as evidence.
