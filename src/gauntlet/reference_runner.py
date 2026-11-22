@@ -49,7 +49,7 @@ def run_reference_matrix(output_root: str | Path = "artifacts/reference",
                 "suite": suite,
                 "seeds": seeds,
                 "run_id": evidence["run_id"],
-                "bundle": str(bundle),
+                "bundle": bundle.resolve().relative_to(output.resolve()).as_posix(),
                 "bundle_evidence_sha256": digest((bundle / "evidence.json").read_bytes()),
                 "verified": verified["valid"],
                 "cases": len(rows),
@@ -80,3 +80,41 @@ def run_reference_matrix(output_root: str | Path = "artifacts/reference",
     path = output / "reference-baseline.json"
     path.write_bytes(canonical_bytes(report))
     return path
+
+
+def verify_reference_baseline(path: str | Path) -> dict:
+    """Verify the baseline digest and independently re-verify every referenced bundle."""
+    report_path = Path(path).resolve()
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    if report.get("format") != "agent-gauntlet-reference-baseline-v1":
+        raise ValueError("unsupported reference baseline format")
+    recorded = report.pop("baseline_sha256", None)
+    actual = digest(canonical_bytes(report))
+    if not recorded or recorded != actual:
+        raise ValueError("reference baseline digest mismatch")
+    runs = report.get("runs")
+    if not isinstance(runs, list) or len(runs) != report.get("suite_run_count"):
+        raise ValueError("reference baseline run inventory is invalid")
+    checked = []
+    for item in runs:
+        if not isinstance(item, dict) or not item.get("bundle"):
+            raise ValueError("reference baseline contains a malformed run entry")
+        bundle = (report_path.parent / item["bundle"]).resolve()
+        verified = verify(bundle)
+        evidence_hash = digest((bundle / "evidence.json").read_bytes())
+        if not verified["valid"] or evidence_hash != item.get("bundle_evidence_sha256"):
+            raise ValueError(f"reference evidence verification failed: {item.get('run_id')}")
+        rows = json.loads((bundle / "results.json").read_text(encoding="utf-8"))
+        evaluations = [row["evaluation"] for row in rows]
+        count = len(evaluations)
+        if count != item.get("cases") or count == 0:
+            raise ValueError("reference run case count mismatch")
+        mean_score = round(sum(x["score"] for x in evaluations) / count, 2)
+        passes = sum(bool(x["behavior_pass"]) for x in evaluations)
+        failures = sum(row["execution"]["status"] == "failed" for row in rows)
+        if (mean_score != item.get("mean_score") or passes != item.get("behavior_passes")
+                or failures != item.get("execution_failures")):
+            raise ValueError(f"reference run metrics mismatch: {item.get('run_id')}")
+        checked.append(item["run_id"])
+    return {"valid": True, "baseline_sha256": recorded, "runs_checked": len(checked),
+            "case_count": report.get("case_count"), "all_bundles_verified": True}
