@@ -1,6 +1,7 @@
 """Run seeded adversarial cases through a user-configured command adapter."""
 from __future__ import annotations
 
+import hashlib
 import json
 import platform
 import uuid
@@ -44,7 +45,7 @@ def run_suite(suite: str, command: list[str], seeds: list[int], output_root: Pat
         (bundle / name).write_bytes(data)
     manifest = {
         "format": "agent-gauntlet-adversarial-evidence-v1", "run_id": run_id,
-        "suite": suite, "seeds": seeds, "adapter_command": command,
+        "suite": suite, "seeds": seeds, "adapter_command_sha256": hashlib.sha256(canonical_bytes(command)).hexdigest(),
         "started_at": started.isoformat(), "completed_at": finished.isoformat(),
         "artifacts": {name: digest(data) for name, data in sorted(payloads.items())},
         "attestation": "unsigned-local-run",
