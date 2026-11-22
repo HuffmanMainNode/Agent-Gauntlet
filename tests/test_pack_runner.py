@@ -43,3 +43,25 @@ def test_canary_rejection():
 def test_response_file_root_must_be_object(tmp_path):
  p=load_pack("technical-reasoning",ROOT/"challenges"); f=tmp_path/"response.json"; f.write_text("[]")
  with pytest.raises(PackValidationError,match="JSON object"): evaluate_response_file(p,f)
+
+def test_cli_evaluates_single_pack_response(tmp_path):
+    import subprocess
+    import sys
+    response = tmp_path / "answer.json"
+    response.write_text(json.dumps({
+        "behavior": "calculate_exactly",
+        "value": 12800,
+        "unit": "bytes",
+        "evidence_ids": ["R-001"],
+        "calculation": "3 * 4096 + 512",
+    }), encoding="utf-8")
+    output = tmp_path / "reports"
+    completed = subprocess.run(
+        [sys.executable, "-m", "gauntlet", "pack", "--name", "technical-reasoning",
+         "--response", str(response), "--output", str(output)],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    report = read(output / "technical-reasoning.result.json")
+    assert report["passed"] is True
+    assert report["score"] == 100.0
