@@ -171,11 +171,12 @@ def verify_leaderboard_directory(directory: str, allowed_signers: str,
             str(path), str(signature_path), str(trust_file), identity,
             attestation.get("namespace", NAMESPACE),
         )
-        suites = card.get("benchmark", {}).get("suites", {})
+        benchmark = card.get("benchmark", {})
+        suites = benchmark.get("suites", {}) if isinstance(benchmark, dict) else {}
         if not isinstance(suites, dict) or set(REQUIRED_LEADERBOARD_SUITES) - suites.keys():
             raise ValueError(f"submission {path.name} does not cover all required suites")
-        if any(type(suites[name].get("cases")) is not int or suites[name]["cases"] < minimum_seeds
-               for name in REQUIRED_LEADERBOARD_SUITES):
+        if any(not isinstance(suites[name], dict) or type(suites[name].get("cases")) is not int
+               or suites[name]["cases"] < minimum_seeds for name in REQUIRED_LEADERBOARD_SUITES):
             raise ValueError(f"submission {path.name} has fewer than {minimum_seeds} seeds in a required suite")
         gri = card.get("gri", {})
         if (not isinstance(gri, dict) or gri.get("coverage_ratio") != 1.0
