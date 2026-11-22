@@ -73,7 +73,8 @@ def verify(bundle):
     if not bundle.is_dir():
         raise ValueError(f"Evidence bundle directory not found: {bundle}")
     evidence = json.loads((bundle / "evidence.json").read_text(encoding="utf-8"))
-    if evidence.get("format") != "agent-gauntlet-evidence-v1":
+    evidence_format = evidence.get("format")
+    if evidence_format not in {"agent-gauntlet-evidence-v1", "agent-gauntlet-adversarial-evidence-v1"}:
         raise ValueError("Unsupported evidence format")
     inventory = evidence.get("artifacts")
     if not isinstance(inventory, dict) or not inventory:
@@ -86,6 +87,24 @@ def verify(bundle):
         if digest(candidate.read_bytes()) != expected:
             raise ValueError(f"Digest mismatch: {name}")
         checked.append(name)
+    if evidence_format == "agent-gauntlet-adversarial-evidence-v1":
+        from .adversarial import evaluate_case
+
+        rows = json.loads((bundle / "results.json").read_text(encoding="utf-8"))
+        for row in rows:
+            recomputed = evaluate_case(row["case"], row["response"])
+            if recomputed != row["evaluation"]:
+                raise ValueError(f"Adversarial evaluation mismatch: {row['case'].get('case_id')}")
+        return {
+            "valid": True,
+            "run_id": evidence["run_id"],
+            "checked_artifacts": sorted(checked),
+            "cases": len(rows),
+            "suite": evidence.get("suite"),
+            "attestation": evidence.get("attestation", "unknown"),
+            "warning": "Integrity and evaluator consistency do not prove agent identity, honest execution, semantic truth, or independent observation.",
+        }
+
     task = json.loads((bundle / "task.json").read_text(encoding="utf-8"))
     response = json.loads((bundle / "response.json").read_text(encoding="utf-8"))
     recorded = json.loads((bundle / "score.json").read_text(encoding="utf-8"))
