@@ -7,6 +7,10 @@ Agent Gauntlet is local-first and offline-capable. The package runtime uses the 
 ### Bundled fixture runner
 Challenge manifest and inert fixture data flow through a bundled fixture agent, deterministic scorer, evidence bundle writer, and offline verifier. The fixture runner does not execute participant code or call external model APIs.
 
+### Interactive tool-loop-v1
+
+The interactive JSONL adapter sends TASK_INIT, intercepts TOOL_CALL frames through a per-pack capability allowlist, returns TOOL_RESULT frames, and terminates only on FINAL_COMMIT. The built-in mock tools are deterministic and offline. Permission denials produce 403 results and counters; repeated denied calls are identified as retry loops. Transient mock failures use bounded retry accounting with exponential delay metadata. The runner uses a process group, POSIX resource limits, bounded output, and a wall-clock deadline. It remains a trusted-code runner, not a filesystem sandbox.
+
 ### Local command adapter
 The adversarial runner invokes an operator-configured argument vector using Python subprocess with `shell=False`, a timeout, and a deliberately minimal environment. It sends one JSON task on stdin and expects one JSON object on stdout. Each seed is a separate process invocation. This is a **single-turn local subprocess contract**, not a remote adapter, persistent session, or sandbox.
 
@@ -21,7 +25,7 @@ The local command adapter is implemented. The experimental persistent-process JS
 - The evaluator is a narrow challenge contract, not a general-purpose hallucination detector.
 
 ## Planned, separate milestones
-1. Interactive tool-round-trip sessions with per-turn deadlines and recovery semantics.
+1. Cross-run provenance signatures and verified scorecards.
 2. Defense-in-depth POSIX process controls, clearly labeled as best-effort containment and never as a hostile-code sandbox.
 3. Optional detached cryptographic signatures and documented key lifecycle.
 4. Expand deterministic semantic assertions with typed derivations and source-to-claim constraints.

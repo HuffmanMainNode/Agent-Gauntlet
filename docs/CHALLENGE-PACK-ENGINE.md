@@ -13,3 +13,16 @@ Each pack contains challenge.json, fixture.json, and expected.json. The manifest
 Supported assertions: exact_match, numeric_tolerance, must_abstain, must_surface_conflict_ids, forbidden_substrings, required_fields. Every pack must cover behavior, traceability, and format dimensions. Dimension scores are normalized to 0-100 and combined using weights totaling 100.
 
 The supported permission allowlist is network disabled, bundled-fixture-only data, and no submission-code execution. The engine passes no filesystem paths or tool handles to an agent and evaluates a response file only. This is a data-contract evaluator, not an OS sandbox. See CONTAINMENT.md.
+
+
+## Interactive tool-loop-v1
+
+Packs declare a per-pack `permissions.tools` allowlist. Run an interactive local agent against a pack with:
+
+```sh
+python -m gauntlet tool-loop --name evidence-integrity --adapter-json '["python","agent.py"]'
+```
+
+The runner sends `TASK_INIT`, then accepts sequential `TOOL_CALL` events and returns `TOOL_RESULT` frames until `FINAL_COMMIT`. Tool calls are intercepted before dispatch. Denials return deterministic HTTP-style 403 results and increment permission-violation counters. The deterministic mock tools are `lookup_evidence`, `calculate_sum`, and `transient_lookup`; they do not access external services. Transient failures use a bounded three-attempt schedule with recorded exponential delays. Repeated denied calls are counted as retry loops.
+
+The interactive adapter runs trusted operator-supplied code in a separate process group with POSIX resource limits, bounded output, a wall-clock deadline, and process-group cleanup. It is not a filesystem sandbox. The protocol transcript and counters are evidence of what this local runner observed, not proof of agent identity or honesty.

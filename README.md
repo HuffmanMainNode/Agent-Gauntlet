@@ -45,6 +45,14 @@ python -m gauntlet pack --all --responses-dir responses/
 
 The engine reports behavior, traceability, and format scores. Missing responses or failed assertions produce a non-zero exit. The pack evaluator is data-only and does not execute the agent.
 
+Run an interactive local agent using only the tools allowed by its pack:
+
+```sh
+python -m gauntlet tool-loop --name evidence-integrity --adapter-json '["python","agent.py"]'
+```
+
+The tool-loop runner sends TASK_INIT, intercepts TOOL_CALL, returns TOOL_RESULT, and requires FINAL_COMMIT. Permission denials return 403 and are counted. Built-in mock tools are deterministic and offline.
+
 ## Evidence bundles
 
 Bundles include challenge identity/version, agent identity/type, timestamps, task input/output, deterministic score breakdown, SHA-256 inventory, and verification report. A valid hash proves that files match recorded digests. It does not prove honest execution, agent identity, safety, or independent observation.
@@ -97,7 +105,7 @@ The adversarial runner executes an explicitly configured command supplied by the
 
 ## Project status
 
-**Prototype / experimental.** The local fixture runner, evidence verifier, local stdin/stdout subprocess adapters, deterministic assertion operators, and experimental persistent-process JSONL session protocol are implemented. Ten declarative Challenge Laboratory packs are populated and structurally tested. Remote adapters, interactive tool-round-trip sessions, hardened sandboxed execution, cryptographic signatures, independent result federation, and production-grade security review remain pending.
+**Prototype / experimental.** The local fixture runner, evidence verifier, local stdin/stdout subprocess adapters, deterministic assertion operators, and experimental persistent-process JSONL session protocol are implemented. Ten declarative Challenge Laboratory packs are populated and structurally tested. Remote adapters, hardened sandboxed execution, cryptographic signatures, independent result federation, and production-grade security review remain pending.
 
 See [Architecture](docs/ARCHITECTURE.md), [Scoring](docs/SCORING.md), [Security](SECURITY.md), [Contributing](CONTRIBUTING.md), and the [Failure Ledger](docs/FAILURE-LEDGER.md).
 

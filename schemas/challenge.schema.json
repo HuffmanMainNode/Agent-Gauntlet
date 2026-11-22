@@ -79,7 +79,8 @@
       "required": [
         "network",
         "filesystem",
-        "execute_submission_code"
+        "execute_submission_code",
+        "tools"
       ],
       "properties": {
         "network": {
@@ -90,6 +91,17 @@
         },
         "execute_submission_code": {
           "const": false
+        },
+        "tools": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "lookup_evidence",
+              "calculate_sum",
+              "transient_lookup"
+            ]
+          }
         }
       }
     },
