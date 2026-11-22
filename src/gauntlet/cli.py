@@ -22,6 +22,10 @@ def main():
     adv.add_argument("--seeds", default="1,2,3", help="comma-separated integer seeds; maximum 100")
     adv.add_argument("--output", default="artifacts/adversarial")
     adv.add_argument("--timeout", type=int, default=45)
+    adv.add_argument("--agent-name", required=True)
+    adv.add_argument("--model-id", required=True)
+    adv.add_argument("--adapter-version", required=True)
+    adv.add_argument("--operator", default="unspecified")
     card = sub.add_parser("scorecard", help="build a public scorecard from verified adversarial evidence bundles")
     card.add_argument("--bundle", action="append", required=True, help="evidence bundle directory; repeat for each suite")
     card.add_argument("--agent-name", required=True)
@@ -46,7 +50,8 @@ def main():
             if not isinstance(command, list) or not all(isinstance(part, str) for part in command):
                 raise ValueError("--adapter-json must be a JSON array of strings")
             seeds = [int(value.strip()) for value in args.seeds.split(",") if value.strip()]
-            path = run_suite(args.suite, command, seeds, Path(args.output), args.timeout)
+            path = run_suite(args.suite, command, seeds, Path(args.output), args.timeout,
+                             args.agent_name, args.model_id, args.adapter_version, args.operator)
             print(json.dumps({"bundle": str(path)}, indent=2))
         elif args.command == "scorecard":
             scorecard = build_scorecard(args.bundle, args.agent_name, args.model_id,
