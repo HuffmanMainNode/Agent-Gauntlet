@@ -80,7 +80,7 @@ def test_tampered_provenance_fails_signature_verification(tmp_path):
     allowed.write_text(f'{identity} namespaces="{namespace}" {pub[0]} {pub[1]}\n')
     signature=sign_scorecard(card,key,identity,tmp_path/"scorecard.json.sig",namespace)
     card["provenance"]["repo_commit"]="forged-commit"
-    with pytest.raises(AttestationError,match="verification failed"):
+    with pytest.raises(AttestationError,match="claims do not match"):
         verify_scorecard_signature(card,signature,allowed,identity,namespace)
 
 def test_bundle_order_does_not_change_canonical_root(tmp_path):
@@ -136,7 +136,7 @@ def test_scorecard_recomputes_gri_and_binds_embedded_pack_results(tmp_path):
     data.pop("scorecard_sha256")
     data["scorecard_sha256"]=hashlib.sha256(canonical_bytes(data)).hexdigest()
     path.write_bytes(canonical_bytes(data))
-    with pytest.raises(ValueError,match="signed provenance hashes"):
+    with pytest.raises(ValueError,match="claims do not match"):
         verify_scorecard(str(path))
 
 
