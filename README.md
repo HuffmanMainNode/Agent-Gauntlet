@@ -53,6 +53,17 @@ python -m gauntlet tool-loop --name evidence-integrity --adapter-json '["python"
 
 The tool-loop runner sends TASK_INIT, intercepts TOOL_CALL, returns TOOL_RESULT, and requires FINAL_COMMIT. Permission denials return 403 and are counted. Built-in mock tools are deterministic and offline.
 
+## Deterministic reference baseline
+
+Generate and verify the standard 25-seed calibration matrix:
+
+```sh
+python -m gauntlet reference --output artifacts/reference
+python -m gauntlet verify-reference --baseline artifacts/reference/reference-baseline.json
+```
+
+The matrix contains 14 bundles and 350 cases across `demo-good`, `demo-bad`, `demo-vulnerable-injection`, and `demo-stale-state`. These are synthetic local controls, not external model results. See [Reference Baselines](docs/REFERENCE-BASELINES.md).
+
 ## Evidence bundles
 
 Bundles include challenge identity/version, agent identity/type, timestamps, task input/output, deterministic score breakdown, SHA-256 inventory, and verification report. A valid hash proves that files match recorded digests. It does not prove honest execution, agent identity, safety, or independent observation.
