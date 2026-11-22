@@ -16,7 +16,10 @@
   "permissions": {
     "network": false,
     "filesystem": "bundled-fixture-only",
-    "execute_submission_code": false
+    "execute_submission_code": false,
+    "tools": [
+      "calculate_sum"
+    ]
   },
   "scoring": {
     "contract": "declarative-challenge-v1",
