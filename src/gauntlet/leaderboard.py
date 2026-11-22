@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .runner import canonical_bytes, digest, verify
-from .attestation import build_provenance, verify_scorecard_signature, NAMESPACE, AttestationError
+from .attestation import (build_provenance, verify_scorecard_signature, scorecard_claims_digest, NAMESPACE, AttestationError)
 from .gri import build_gri, DEFAULT_DOMAINS
 
 
@@ -90,6 +90,7 @@ def build_scorecard(bundle_paths: list[str], agent_name: str, model_id: str,
             "Results are self-reported until independently reproduced.",
         ],
     }
+    scorecard["provenance"]["scorecard_claims_sha256"] = scorecard_claims_digest(scorecard)
     scorecard["scorecard_sha256"] = hashlib.sha256(canonical_bytes(scorecard)).hexdigest()
     return scorecard
 
@@ -122,6 +123,8 @@ def verify_scorecard(path: str, signature_path: str | None = None,
     provenance = scorecard.get("provenance", {})
     if not isinstance(provenance, dict):
         raise ValueError("Scorecard provenance must be an object")
+    if provenance.get("scorecard_claims_sha256") != scorecard_claims_digest(scorecard):
+        raise ValueError("Scorecard claims do not match signed provenance digest")
     if provenance.get("pack_result_count") != len(pack_results):
         raise ValueError("Scorecard pack-result count does not match provenance")
     from .runner import digest
