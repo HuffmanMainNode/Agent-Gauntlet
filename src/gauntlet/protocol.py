@@ -46,7 +46,7 @@ class ProtocolValidator:
             raise ToolLoopProtocolError("each agent frame must be an object")
         required = self.require_protocol if require_protocol is None else require_protocol
         marker = frame.get("protocol")
-        if (required and marker != PROTOCOL) or (marker is not None and marker != PROTOCOL):
+        if (required and marker != PROTOCOL) or ("protocol" in frame and marker != PROTOCOL):
             raise ToolLoopProtocolError("invalid protocol frame")
         if frame_size is not None:
             if type(frame_size) is not int or frame_size < 0:
