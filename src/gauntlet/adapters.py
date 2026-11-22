@@ -39,7 +39,7 @@ def invoke_session(command: list[str], frames: list[dict], timeout_seconds: int 
     if timeout_seconds < 1 or timeout_seconds > 300:
         raise ValueError("Timeout must be between 1 and 300 seconds")
     env = {"PATH": os.environ.get("PATH", ""), "LANG": "C.UTF-8", "PYTHONIOENCODING": "utf-8"}
-    wire_input = "".join(json.dumps(frame, separators=(",", ":")) + "\\n" for frame in frames)
+    wire_input = "".join(json.dumps(frame, separators=(",", ":")) + "\n" for frame in frames)
     try:
         completed = subprocess.run(command, input=wire_input, text=True, capture_output=True,
                                    timeout=timeout_seconds, check=False, shell=False, env=env)
