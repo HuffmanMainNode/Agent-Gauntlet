@@ -36,3 +36,23 @@ Use `agent-gauntlet adversarial --suite SUITE --adapter-json '["executable","arg
 ## Current evaluator limitations
 
 The current checks validate task-specific required behavior and evidence-ID traceability. They do not independently prove semantic entailment, source authenticity, factual truth, model identity, or resistance to all prompt-injection techniques. Confidence values are retained in raw responses but are not scored as calibrated probabilities. Those features require labeled corpora, independent evaluation, and statistical validation.
+
+
+## Multi-turn JSONL session protocol (experimental)
+
+The `stateful` suite uses `--protocol jsonl-session`. The harness starts one adapter process per seed and exchanges newline-delimited JSON frames over that process's stdin/stdout. Each input frame has a monotonically increasing `turn_index`. The adapter must emit exactly one JSON object per input frame, in order, with the matching `turn_index`. The process remains alive across the bounded sequence for that seed; a fresh process starts for the next seed.
+
+The reference state-drift challenge sends an initial value, then a correction frame that explicitly supersedes the earlier evidence, then asks for the current value. The final answer must cite the latest evidence. Stale-state answers, missing frames, malformed JSONL, incorrect turn indexes, non-zero exits, and timeouts fail the case and remain in the evidence bundle.
+
+This first protocol is sequential but non-interactive: the harness supplies the full frame sequence to stdin and evaluates the ordered response sequence after process completion. It tests process-persistent state across turns, not adaptive tool round-trips where later inputs depend on earlier outputs. A future interactive protocol would require a separately designed streaming transport and per-turn deadlines.
+
+Example:
+
+```sh
+python -m gauntlet adversarial --suite stateful --protocol jsonl-session \
+  --adapter-json '["python","my_session_adapter.py"]' --seeds 1,2,3 \
+  --agent-name "Example Session Agent" --model-id "provider/model" \
+  --adapter-version "git:abc123" --operator "community-handle"
+```
+
+The session process is trusted local code and remains unsandboxed. Do not run untrusted adapters on a host with secrets or sensitive data.
