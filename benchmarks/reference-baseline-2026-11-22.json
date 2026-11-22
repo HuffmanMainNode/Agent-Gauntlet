@@ -1,0 +1,141 @@
+{
+  "format": "agent-gauntlet-release-baseline-report-v1",
+  "generated_at": "2026-11-22T18:10:00Z",
+  "baseline": {
+    "format": "agent-gauntlet-reference-baseline-v1",
+    "seed_count": 25,
+    "seed_values": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25
+    ],
+    "profile_count": 4,
+    "suite_run_count": 14,
+    "case_count": 350,
+    "verified_evidence_bundles": 14,
+    "all_bundles_verified": true,
+    "baseline_sha256": "a3ede77ae332e90b30c6245f05bf3856bf4a7e62825726214086b0104876edb6"
+  },
+  "source": {
+    "repository": "HuffmanMainNode/Agent-Gauntlet",
+    "tested_commit": "d846955507118b9628cd7ad8b593ffd9e97db22f",
+    "merged_main_commit": "a559af73b11bd4d5419d5eb1495c532761df7b04",
+    "pull_request": 16
+  },
+  "ci": {
+    "workflow": "Agent Gauntlet CI",
+    "run_id": 45053558139,
+    "run_url": "https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45053558139",
+    "conclusion": "success",
+    "python_matrix": [
+      "3.11",
+      "3.12",
+      "3.13"
+    ],
+    "test_suite": "passed on all three versions",
+    "reference_matrix": "passed and verified on Python 3.11"
+  },
+  "artifact": {
+    "name": "agent-gauntlet-reference-baseline",
+    "artifact_id": 14766482506,
+    "sha256": "bd78f1c8099b52749e5aaaed5087b0bcf271f1ed140ed849b9e3ec7aa82b0bf9",
+    "retention_days": 90,
+    "expires_at": "2027-02-20T18:10:33Z",
+    "download_url": "https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45053558139"
+  },
+  "profiles": [
+    {
+      "profile": "demo-good",
+      "suites": [
+        "hallucination",
+        "contradiction",
+        "injection",
+        "variable",
+        "ambiguity",
+        "stateful"
+      ],
+      "cases_per_suite": 25,
+      "behavior_pass_rate": 1,
+      "mean_score_per_suite": 100,
+      "execution_failures": 0
+    },
+    {
+      "profile": "demo-bad",
+      "suites": [
+        "hallucination",
+        "contradiction",
+        "injection",
+        "variable",
+        "ambiguity"
+      ],
+      "cases_per_suite": 25,
+      "behavior_pass_rate": 0,
+      "mean_score_per_suite": 0,
+      "execution_failures": 0
+    },
+    {
+      "profile": "demo-bad",
+      "suites": [
+        "stateful"
+      ],
+      "cases_per_suite": 25,
+      "behavior_pass_rate": 0,
+      "mean_score_per_suite": 50,
+      "execution_failures": 0
+    },
+    {
+      "profile": "demo-vulnerable-injection",
+      "suites": [
+        "injection"
+      ],
+      "cases_per_suite": 25,
+      "behavior_pass_rate": 0,
+      "mean_score_per_suite": 50,
+      "execution_failures": 0
+    },
+    {
+      "profile": "demo-stale-state",
+      "suites": [
+        "stateful"
+      ],
+      "cases_per_suite": 25,
+      "behavior_pass_rate": 0,
+      "mean_score_per_suite": 50,
+      "execution_failures": 0
+    }
+  ],
+  "interpretation": [
+    "All 14 deterministic synthetic evidence bundles passed integrity verification.",
+    "The positive control passed every declared case; negative controls were detected by behavior assertions.",
+    "A behavior pass rate of zero can coexist with a non-zero mean case score because case scoring includes multiple dimensions. Do not interpret mean score alone as behavioral success.",
+    "These calibration programs are synthetic local controls, not measurements of commercial or external AI systems."
+  ],
+  "limitations": [
+    "This report summarizes the CI artifact and does not embed the full evidence bundle archive.",
+    "The downloadable workflow artifact is retained for 90 days; its artifact digest and baseline digest are recorded here.",
+    "OpenSSH signatures establish key-holder custody over signed provenance, not behavioral honesty or semantic truth.",
+    "Independent third-party reproduction and external agent submissions remain future validation work."
+  ]
+}
