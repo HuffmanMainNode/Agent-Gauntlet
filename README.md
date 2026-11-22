@@ -49,6 +49,7 @@ The expanded prototype includes seeded suites for:
 - Prompt injection: hostile instructions embedded inside evidence must remain untrusted data.
 - Live-variable simulation: values change by seed and must be recalculated from current inputs.
 - Ambiguity: agents must not turn missing approval evidence into an approval claim.
+- Stateful sessions: a persistent adapter process must carry state across sequential JSONL frames and replace stale values after an authoritative update.
 
 Run a suite using an adapter command you explicitly trust:
 
@@ -60,7 +61,7 @@ python -m gauntlet adversarial --suite hallucination --adapter-json '["python","
   --operator "community-handle"
 ```
 
-The adapter receives one JSON task on stdin and returns one JSON response on stdout. The command is executed directly without a shell and has a timeout, but **this is not a sandbox**. Run adapters only in a disposable environment. The report records per-case results, suite summaries, seeds, and hashes. Adapter timeouts, non-zero exits, malformed output, and other handled execution errors are retained as failed cases with zero points rather than silently dropping the run.
+The single-turn adapter receives one JSON task on stdin and returns one JSON response on stdout. The optional `jsonl-session` protocol starts one persistent process per seed, sends a bounded sequence of JSON frames (one per line), and requires one JSON response frame per turn with matching `turn_index`. Try the stateful suite with `--suite stateful --protocol jsonl-session`. Both modes execute the explicitly configured command directly without a shell and have a timeout, but **neither is a sandbox**. Run only trusted adapters in a disposable, externally isolated environment. Adapter timeouts, non-zero exits, malformed output, and missing session frames are retained as failed cases with zero points.
 
 Evidence references establish traceability, not semantic entailment. The first evaluator is a narrow contract checker, not a general hallucination detector or complete prompt-injection defense. See [Adversarial Testing](docs/ADVERSARIAL-TESTING.md).
 
