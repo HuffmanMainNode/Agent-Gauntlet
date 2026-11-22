@@ -58,11 +58,13 @@ Never mark a failure closed merely because a later unrelated CI run is green.
 - **Impact:** An internally inconsistent results file could claim a failed execution while retaining a successful evaluation, and the verifier would not reject that contradiction if the artifact digest inventory were also updated.
 - **Correction:** The verifier now validates suite and seed inventory, deterministic case reconstruction, row shape, response type, execution status, failure diagnostics, and recomputes the evaluation with the correct zero-score rule for failed executions.
 - **Regression coverage:** Added tests that alter a result and update its artifact digest to ensure the verifier still rejects a failed execution with a nonzero score, and rejects a case that does not match the deterministic seed generator.
-- **Disposition:** Implemented on branch `security/strict-evidence-verification`; pending CI and independent review.
+- **Verification:** PR #6 merged after the Python 3.11/3.12/3.13 test matrix passed on the final branch commit. See [workflow 45017472323](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45017472323).
+- **Disposition:** Closed by PR #6. The historical issue remains documented; unsigned-manifest forgery remains an explicit limitation.
 
 ## Entry FG-2026-11-22-005: public scorecards omitted execution-failure counts
 
 - **Observed:** The scorecard exposed behavior pass rates and unsupported claims but did not show adapter execution failures.
 - **Impact:** A reader could miss an important operational reliability dimension.
 - **Correction:** Added per-suite `execution_failures` to scorecard generation and the scorecard schema.
-- **Disposition:** Implemented on branch `security/strict-evidence-verification`; pending CI.
+- **Verification:** PR #6 merged after the Python 3.11/3.12/3.13 test matrix passed on the final branch commit. See [workflow 45017472323](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45017472323).
+- **Disposition:** Closed by PR #6.
