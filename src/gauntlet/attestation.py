@@ -134,13 +134,14 @@ def build_provenance(bundle_paths: list[str], repo_root: str | Path | None = Non
         "challenge_pack_hashes": packs,
         "bundle_root_sha256": root_hash,
         "bundle_file_count": sum(1 for item in entries if item["path"].startswith("bundles/")),
-        "challenge_pack_count": len(packs),\n        "pack_result_count": pack_result_count,
+        "challenge_pack_count": len(packs),
+        "pack_result_count": pack_result_count,
         "root_algorithm": "sha256(sorted-path-hash-pairs-v1)",
     }
 
 
 def attestation_payload(provenance: dict[str, Any]) -> bytes:
-    required = {"repo_commit", "challenge_pack_hashes", "bundle_root_sha256", "root_algorithm"}
+    required = {"repo_commit", "challenge_pack_hashes", "bundle_root_sha256", "root_algorithm", "pack_result_count"}
     if not isinstance(provenance, dict) or not required <= provenance.keys():
         raise AttestationError("provenance is incomplete")
     root_hash = provenance["bundle_root_sha256"]
@@ -163,6 +164,7 @@ def attestation_payload(provenance: dict[str, Any]) -> bytes:
         "challenge_pack_hashes": provenance["challenge_pack_hashes"],
         "bundle_root_sha256": root_hash,
         "root_algorithm": provenance["root_algorithm"],
+        "pack_result_count": provenance["pack_result_count"],
     })
 
 
