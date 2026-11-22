@@ -123,7 +123,9 @@ def test_interactive_process_receives_tool_result_and_commits(tmp_path):
     assert result["containment"]["effective_mode"] in {"rlimit_only", "rlimit_and_user_net_pid_ns"}
     assert "RLIMIT_CPU" in result["containment"]["applied_limits"]
     assert len(result["transcript_sha256"]) == 64
-    saved_report = json.loads(Path(result["containment_report_path"]).read_text())\n    assert saved_report == result["containment"]\n    assert Path(result["containment_report_path"]).name == "containment.json"\n    saved_report = json.loads(Path(result["containment_report_path"]).read_text())\n    assert saved_report == result["containment"]\n    assert Path(result["containment_report_path"]).name == "containment.json"
+    saved_report = json.loads(Path(result["containment_report_path"]).read_text())
+    assert saved_report == result["containment"]
+    assert Path(result["containment_report_path"]).name == "containment.json"
 
 def test_pack_tool_permissions_are_narrow():
     pack=load_pack("privacy-authorization",ROOT/"challenges")
