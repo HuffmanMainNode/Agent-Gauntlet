@@ -86,7 +86,7 @@ def test_leaderboard_gate_requires_registered_signer_complete_coverage_and_25_ca
 
 @pytest.mark.parametrize("kwargs, message", [
     ({"identity": "unknown@example.invalid"}, "unregistered signer"),
-    ({"seed_cases": 24}, "fewer than 25 seeds"),
+    ({"seed_cases": 24}, "fewer than 25 unique seeds"),
     ({"complete_gri": False}, "incomplete GRI"),
 ])
 def test_leaderboard_gate_rejects_ineligible_submissions(tmp_path, monkeypatch, kwargs, message):
@@ -94,6 +94,20 @@ def test_leaderboard_gate_rejects_ineligible_submissions(tmp_path, monkeypatch, 
                         lambda *args, **kw: {"valid": True, "scorecard_sha256": "a" * 64})
     directory, allowed, registry = _submission(tmp_path, **kwargs)
     with pytest.raises(ValueError, match=message):
+        leaderboard.verify_leaderboard_directory(
+            str(directory), str(allowed), str(registry)
+        )
+
+
+def test_leaderboard_gate_rejects_duplicate_seed_inventory(tmp_path, monkeypatch):
+    monkeypatch.setattr(leaderboard, "verify_scorecard",
+                        lambda *args, **kw: {"valid": True, "scorecard_sha256": "a" * 64})
+    directory, allowed, registry = _submission(tmp_path)
+    path = directory / "submission.json"
+    card = json.loads(path.read_text(encoding="utf-8"))
+    card["evidence"][0]["seeds"] = [1] * 25
+    path.write_text(json.dumps(card), encoding="utf-8")
+    with pytest.raises(ValueError, match="invalid seed inventory"):
         leaderboard.verify_leaderboard_directory(
             str(directory), str(allowed), str(registry)
         )
