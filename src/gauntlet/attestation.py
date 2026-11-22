@@ -119,6 +119,15 @@ def attestation_payload(provenance: dict[str, Any]) -> bytes:
     root_hash = provenance["bundle_root_sha256"]
     if not isinstance(root_hash, str) or len(root_hash) != 64 or any(c not in "0123456789abcdef" for c in root_hash):
         raise AttestationError("bundle_root_sha256 must be a lowercase SHA-256 digest")
+    if not isinstance(provenance["repo_commit"], str) or not provenance["repo_commit"]:
+        raise AttestationError("repo_commit must be a non-empty string")
+    pack_hashes = provenance["challenge_pack_hashes"]
+    if not isinstance(pack_hashes, dict) or any(
+        not isinstance(name, str) or not isinstance(value, str) or len(value) != 64
+        or any(char not in "0123456789abcdef" for char in value)
+        for name, value in pack_hashes.items()
+    ):
+        raise AttestationError("challenge_pack_hashes must map pack IDs to SHA-256 digests")
     return canonical_bytes({
         "format": ATTESTATION_FORMAT,
         "repo_commit": provenance["repo_commit"],
@@ -168,6 +177,13 @@ def sign_scorecard(scorecard: dict, private_key: str | Path, identity: str,
 def verify_scorecard_signature(scorecard: dict, signature_path: str | Path,
                                allowed_signers: str | Path, identity: str,
                                namespace: str = NAMESPACE) -> dict:
+    metadata = scorecard.get("attestation", {})
+    if (not isinstance(metadata, dict) or metadata.get("status") != "signed"
+            or metadata.get("scheme") != "openssh-ssh-keygen-y"
+            or metadata.get("identity") != identity
+            or metadata.get("namespace") != namespace
+            or metadata.get("signed_object") != "bundle_root_sha256"):
+        raise AttestationError("scorecard signature metadata does not match the requested signer")
     executable = shutil.which("ssh-keygen")
     if not executable:
         raise AttestationError("ssh-keygen is required for OpenSSH verification")
