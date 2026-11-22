@@ -129,4 +129,5 @@ Never mark a failure closed merely because a later unrelated CI run is green.
 - **Compatibility:** Bump the failure-recovery challenge pack to 1.1.0 because its fixture contract changes.
 - **CI history:** An early run against the not-yet-updated legacy tests failed two assertions that still expected the old one-call retry behavior: [45056178392](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45056178392). The tests were replaced with stateful dispatcher and live CLI integration cases.
 - **Verification:** The final implementation head passed the complete Python 3.11/3.12/3.13 matrix, deterministic reference baseline, and artifact upload in [workflow 45056445878](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45056445878). PR merge remains pending.
-- **Disposition:** Fixed-pending-merge. Close after PR #22 is merged and the post-merge CI remains green.
+- **Merge:** PR [#22](https://github.com/HuffmanMainNode/Agent-Gauntlet/pull/22) merged as `50b7d072968bb9aac4fba0c0572e389ab7dd4e50`. The post-merge CI run is tracked separately.
+- **Disposition:** Closed by the merged stateful dispatcher, trace/live/CLI regression coverage, and passing final PR matrix plus leaderboard gate. The initial failed workflow remains preserved as development history.
