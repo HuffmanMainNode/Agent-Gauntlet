@@ -115,6 +115,8 @@ def main():
             report.write_text(json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")
             print(json.dumps({"report": str(report), "permission_violations": result["permission_violations"],
                               "retry_loop_count": result["retry_loop_count"], "score_adjustment": result["score_adjustment"], "pack_score": evaluation["score"], "pack_passed": evaluation["passed"]}, indent=2))
+            if not evaluation["passed"] or result["permission_violations"]:
+                return 1
         elif args.command == "scorecard":
             scorecard = build_scorecard(args.bundle, args.agent_name, args.model_id,
                                         args.adapter_version, args.operator)
