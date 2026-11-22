@@ -10,7 +10,7 @@ Challenge manifest and inert fixture data flow through a bundled fixture agent, 
 ### Local command adapter
 The adversarial runner invokes an operator-configured argument vector using Python subprocess with `shell=False`, a timeout, and a deliberately minimal environment. It sends one JSON task on stdin and expects one JSON object on stdout. Each seed is a separate process invocation. This is a **single-turn local subprocess contract**, not a remote adapter, persistent session, or sandbox.
 
-The local command adapter is implemented. It must not be described as secure isolation: the process retains the OS permissions and network access of its execution identity.
+The local command adapter is implemented. The experimental persistent-process JSONL session adapter is also implemented for sequential, non-interactive multi-turn tests. Neither path is secure isolation: the process retains the OS permissions and network access of its execution identity.
 
 ## Evidence and trust boundaries
 - Challenge payloads are parsed as data, not imported as Python.
@@ -21,10 +21,10 @@ The local command adapter is implemented. It must not be described as secure iso
 - The evaluator is a narrow challenge contract, not a general-purpose hallucination detector.
 
 ## Planned, separate milestones
-1. Multi-turn stateful adapter protocol with explicit frame sequencing, state-change events, turn limits, and recovery semantics.
+1. Interactive tool-round-trip sessions with per-turn deadlines and recovery semantics.
 2. Defense-in-depth POSIX process controls, clearly labeled as best-effort containment and never as a hostile-code sandbox.
 3. Optional detached cryptographic signatures and documented key lifecycle.
-4. Deterministic semantic assertion primitives for exact values, numeric tolerances, allowed derivations, and source-to-claim constraints.
+4. Expand deterministic semantic assertions with typed derivations and source-to-claim constraints.
 5. Independent verifier test vectors and cross-language implementations.
 6. Federated publication and independent reproduction formats.
 

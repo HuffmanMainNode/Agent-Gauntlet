@@ -1,5 +1,6 @@
 import pytest
 
+from gauntlet.assertions import evaluate_assertions
 from gauntlet.adversarial import build_case, evaluate_case
 
 
@@ -89,3 +90,41 @@ def test_stateful_case_changes_state_and_requires_latest_evidence():
                                        "evidence_ids": ["E1"]}]},
     ]}
     assert evaluate_case(case, stale)["behavior_pass"] is False
+
+
+def test_exact_match_supports_array_wildcards_and_is_integrated():
+    case = build_case("variable", 91)
+    case["assertions"] = [{"op": "exact_match", "path": "claims[*].text",
+                           "expected": case["known_facts"][0]["value"]}]
+    good = {"claims": [{"text": case["known_facts"][0]["value"], "evidence_ids": ["E1", "E2"]}]}
+    result = evaluate_case(case, good)
+    assert result["behavior_pass"] is True
+    assert result["assertions"][0]["passed"] is True
+    bad = {"claims": [{"text": "wrong", "evidence_ids": ["E1", "E2"]}]}
+    assert evaluate_case(case, bad)["behavior_pass"] is False
+
+
+def test_numeric_tolerance_is_bounded_and_rejects_non_finite_values():
+    result = evaluate_assertions([
+        {"op": "numeric_tolerance", "path": "claims[*].score", "expected": 10, "tolerance": 0.1}
+    ], {"claims": [{"score": "10.05"}]})
+    assert result[0]["passed"] is True
+    invalid = evaluate_assertions([
+        {"op": "numeric_tolerance", "path": "score", "expected": 10, "tolerance": -1}
+    ], {"score": 10})
+    assert invalid[0]["passed"] is False
+
+
+def test_abstention_conflict_ids_and_forbidden_substrings():
+    response = {"abstain": True, "conflict_ids": ["E1", "E2"], "note": "clean"}
+    results = evaluate_assertions([
+        {"op": "must_abstain"},
+        {"op": "must_surface_conflict_ids", "expected": ["E1", "E2"]},
+        {"op": "forbidden_substrings", "values": ["private-token"]},
+    ], response)
+    assert all(item["passed"] for item in results)
+
+
+def test_unknown_or_malformed_assertions_fail_closed():
+    results = evaluate_assertions([{"op": "made_up"}, {"op": "exact_match", "path": "x"}], {})
+    assert all(not item["passed"] for item in results)
