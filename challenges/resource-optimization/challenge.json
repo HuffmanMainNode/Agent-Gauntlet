@@ -1,0 +1,33 @@
+{
+  "id": "resource-optimization",
+  "version": "1.0.0",
+  "title": "Resource Optimization: Budgeted Plan",
+  "category": "resource-optimization",
+  "difficulty": "advanced",
+  "description": "Choose the highest-value set of indivisible tasks under a 10-unit budget. A costs 6/value 9; B costs 5/value 8; C costs 4/value 6; D costs 3/value 4.",
+  "seed": 20261122,
+  "fixture": "fixture.json",
+  "expected": "expected.json",
+  "provenance": {
+    "classification": "synthetic",
+    "created_for": "Agent Gauntlet Challenge Laboratory",
+    "real_world_evidence": false
+  },
+  "permissions": {
+    "network": false,
+    "filesystem": "bundled-fixture-only",
+    "execute_submission_code": false
+  },
+  "scoring": {
+    "contract": "declarative-challenge-v1",
+    "behavior_weight": 70,
+    "traceability_weight": 20,
+    "format_weight": 10,
+    "unknowns_must_be_disclosed": true
+  },
+  "limits": {
+    "time_seconds": 120,
+    "max_output_bytes": 32768,
+    "external_dependencies": false
+  }
+}
