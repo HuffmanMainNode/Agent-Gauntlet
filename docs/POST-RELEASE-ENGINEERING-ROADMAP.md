@@ -13,7 +13,7 @@ This roadmap separates confirmed repository state, current design limits, and th
 - The final PR #24, #25, #26, and #27 revisions passed the Python 3.11, 3.12, and 3.13 CI matrix. PR #26 also passed the leaderboard submission gate; PR #27 adds generated reference-baseline schema validation to the 3.11 CI job.
 - The signed-scorecard-claims correction from PR #18 is merged. Its tampering regression test and leaderboard gate passed; the full Python 3.11, 3.12, and 3.13 CI matrix passed on the merged revision.
 - The latest main CI matrix and leaderboard workflow passed.
-- There are no open issues or pull requests on the audited main snapshot.
+- At the PR #27 merged snapshot, there were no open issues or pull requests; subsequent engineering work is tracked through reviewable pull requests.
 - The signer registry contains no identities and the submissions directory contains no scorecards. The leaderboard gate is therefore bootstrapped but has no external participants.
 - The reference baseline is a synthetic, deterministic local benchmark. It is not an independent evaluation of third-party agents.
 
@@ -68,8 +68,8 @@ Use one protocol validator for live sessions and offline traces. Require exact i
 **Initial local execution/evidence pipeline implemented and merged in PR #26.** The `pack-run` and `verify-pack-run` commands provide per-pack, per-seed records. Current seed semantics are deliberately limited: each seed is injected into a fixed synthetic fixture, while fixture payload content remains unchanged. The next Phase C increment must add genuine deterministic fixture generation from seed values and a documented adapter identity/reproduction contract.
 
 The implemented runner records:
-- immutable challenge and fixture hashes;
-- adapter identity/version and command declaration;
+- hash-bound challenge and per-seed fixture artifacts;
+- operator-declared adapter name/version and command digest;
 - tool-loop transcript and containment report when applicable;
 - raw final response;
 - deterministic assertion results and score;
