@@ -65,7 +65,7 @@ def evaluate_trace(frames: list[dict], fixture: dict, allowed_tools: set[str]) -
     for frame in frames:
         if not isinstance(frame, dict):
             raise ToolLoopProtocolError("each agent frame must be an object")
-        if frame.get("turn_index") != expected_turn:
+        if type(frame.get("turn_index")) is not int or frame.get("turn_index") != expected_turn:
             raise ToolLoopProtocolError(f"turn_index must be {expected_turn}")
         expected_turn += 1
         event = frame.get("event")
@@ -229,6 +229,8 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                             elif frame.get("event") == "FINAL_COMMIT":
                                 if not isinstance(frame.get("payload"), dict):
                                     raise ToolLoopProtocolError("FINAL_COMMIT payload must be an object")
+                                if buffer:
+                                    raise ToolLoopProtocolError("frames may not follow FINAL_COMMIT")
                                 final_commit = frame["payload"]
                                 break
                             else:
