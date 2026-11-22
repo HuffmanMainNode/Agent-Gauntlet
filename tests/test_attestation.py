@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from gauntlet.attestation import (
-    AttestationError, build_provenance, sign_scorecard, verify_scorecard_signature,
+    AttestationError, build_provenance, sign_scorecard, verify_scorecard_signature, scorecard_claims_digest,
 )
 from gauntlet.adversarial_runner import run_suite
 from gauntlet.leaderboard import build_scorecard, verify_scorecard, write_scorecard
@@ -138,3 +138,20 @@ def test_scorecard_recomputes_gri_and_binds_embedded_pack_results(tmp_path):
     path.write_bytes(canonical_bytes(data))
     with pytest.raises(ValueError,match="signed provenance hashes"):
         verify_scorecard(str(path))
+
+
+@pytest.mark.skipif(shutil.which("ssh-keygen") is None,reason="OpenSSH ssh-keygen unavailable")
+def test_signature_binds_suite_and_evidence_claims(tmp_path):
+    bundle=make_bundle(tmp_path)
+    card=build_scorecard([str(bundle)],"Attested Agent","example/model-v1","adapter-1")
+    key=tmp_path/"claims_key"
+    subprocess.run(["ssh-keygen","-q","-t","ed25519","-N","","-f",str(key)],check=True)
+    pub=(tmp_path/"claims_key.pub").read_text().split()
+    identity="claims-agent@example.invalid";namespace="agent-gauntlet"
+    allowed=tmp_path/"claims_allowed"
+    allowed.write_text(f'{identity} namespaces="{namespace}" {pub[0]} {pub[1]}\\n')
+    card["provenance"]["scorecard_claims_sha256"]=scorecard_claims_digest(card)
+    signature=sign_scorecard(card,key,identity,tmp_path/"claims.json.sig",namespace)
+    card["benchmark"]["suites"]["hallucination"]["behavior_pass_rate"]=1.0
+    with pytest.raises(AttestationError,match="claims do not match"):
+        verify_scorecard_signature(card,signature,allowed,identity,namespace)
