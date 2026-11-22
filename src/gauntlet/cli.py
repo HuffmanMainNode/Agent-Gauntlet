@@ -138,6 +138,10 @@ def main():
                 evaluation["passed"] = False
                 evaluation["score"] = 0.0
             result["pack_evaluation"] = evaluation
+            result["pack_id"] = challenge.pack_id
+            result["score"] = evaluation["score"]
+            result["permission_violation"] = evaluation["permission_violation"]
+            result["injection_breach"] = evaluation["injection_breach"]
             output = Path(args.output)
             output.mkdir(parents=True, exist_ok=True)
             report = output / f"{args.name}.tool-loop.json"
@@ -186,7 +190,7 @@ def main():
             print(json.dumps({"scorecard": str(path), "scorecard_sha256": scorecard["scorecard_sha256"],
                               "balanced_behavior_index": scorecard["balanced_behavior_index"],
                               "suite_count": scorecard["benchmark"]["suite_count"],
-                              "case_count": scorecard["benchmark"]["case_count"], "signature": str(signature) if signature else None}, indent=2))
+                              "case_count": scorecard["benchmark"]["case_count"], "gri_coverage": scorecard["gri"]["coverage_ratio"], "gri_missing_domains": scorecard["gri"]["missing_domains"], "signature": str(signature) if signature else None}, indent=2))
         else:
             print(json.dumps(verify_scorecard(args.scorecard, args.signature, args.allowed_signers,
                                              args.signer_identity, args.namespace), indent=2))
