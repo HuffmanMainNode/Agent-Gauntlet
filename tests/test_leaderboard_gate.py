@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from gauntlet.attestation import sign_scorecard
+from gauntlet.attestation import sign_scorecard, scorecard_claims_digest
 from gauntlet.gri import DEFAULT_DOMAINS, build_gri
 from gauntlet.runner import canonical_bytes, digest
 from gauntlet.leaderboard import (
@@ -49,6 +49,7 @@ def make_signed_submission(tmp_path, minimum_cases=25):
                      "signature_file":None,"signed_object":None},
       "limitations":[],"gri":build_gri(pack_results),
     }
+    card["provenance"]["scorecard_claims_sha256"] = scorecard_claims_digest(card)
     submissions=tmp_path/"submissions";submissions.mkdir()
     signature=sign_scorecard(card,key,identity,submissions/"sample.json.sig",namespace)
     path=write_scorecard(card,str(submissions/"sample.json"))
@@ -81,3 +82,15 @@ def test_empty_leaderboard_is_valid_but_has_no_ranked_submissions(tmp_path):
     registry=tmp_path/"registered_signers.json";registry.write_text('{"registered_identities":[]}\n')
     result=verify_leaderboard_directory(str(submissions),str(allowed),str(registry),25)
     assert result["valid"] is True and result["submissions_checked"]==0
+
+
+@pytest.mark.skipif(shutil.which("ssh-keygen") is None,reason="OpenSSH ssh-keygen unavailable")
+def test_leaderboard_gate_rejects_signed_scorecard_claim_tampering(tmp_path):
+    path,allowed,registry,identity=make_signed_submission(tmp_path)
+    card=json.loads(path.read_text())
+    card["benchmark"]["suites"]["injection"]["behavior_pass_rate"]=1.0
+    card.pop("scorecard_sha256")
+    card["scorecard_sha256"]=digest(canonical_bytes(card))
+    path.write_bytes(canonical_bytes(card))
+    with pytest.raises(ValueError,match="claims do not match signed provenance digest"):
+        verify_leaderboard_directory(str(path.parent),str(allowed),str(registry),25)
