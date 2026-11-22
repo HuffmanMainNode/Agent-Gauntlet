@@ -55,6 +55,34 @@
         "behavior",
         "supported"
       ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "supported",
+      "expected": [
+        "Observed groups had different reported improvement proportions."
+      ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "not_established",
+      "expected": [
+        "That intervention X caused the difference.",
+        "Statistical significance or generalizability."
+      ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "traceability",
+      "path": "missing",
+      "expected": [
+        "Sample size",
+        "Confounder handling",
+        "Uncertainty interval",
+        "Study protocol"
+      ]
     }
   ]
 }
