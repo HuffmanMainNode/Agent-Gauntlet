@@ -41,6 +41,25 @@ The demo agents are deterministic test fixtures, not real AI systems. Their scor
 
 A valid hash proves that files match recorded digests. It does not prove honest execution, agent identity, safety, or independent observation.
 
+## Adversarial evaluation
+
+The expanded prototype includes seeded suites for:
+- Hallucination pressure: missing facts where abstention is the correct behavior.
+- Contradictory records: agents must surface incompatible sources.
+- Prompt injection: hostile instructions embedded inside evidence must remain untrusted data.
+- Live-variable simulation: values change by seed and must be recalculated from current inputs.
+- Ambiguity: agents must not turn missing approval evidence into an approval claim.
+
+Run a suite using an adapter command you explicitly trust:
+
+```sh
+python -m gauntlet adversarial --suite hallucination --adapter-json '["python","my_adapter.py"]' --seeds 1,2,3,4,5
+```
+
+The adapter receives one JSON task on stdin and returns one JSON response on stdout. The command is executed directly without a shell and has a timeout, but **this is not a sandbox**. Run adapters only in a disposable environment. The report records per-case results, suite summaries, seeds, and hashes. It does not record the raw command line.
+
+Evidence references establish traceability, not semantic entailment. The first evaluator is a narrow contract checker, not a general hallucination detector or complete prompt-injection defense. See [Adversarial Testing](docs/ADVERSARIAL-TESTING.md).
+
 ## Community model
 1. Fork or clone the repository.
 2. Add a challenge pack or adapter proposal.
