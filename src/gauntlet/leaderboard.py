@@ -9,11 +9,13 @@ from pathlib import Path
 
 from .runner import canonical_bytes, digest, verify
 from .attestation import build_provenance, verify_scorecard_signature, NAMESPACE, AttestationError
+from .gri import build_gri, DEFAULT_DOMAINS
 
 
 def build_scorecard(bundle_paths: list[str], agent_name: str, model_id: str,
                     adapter_version: str, operator: str = "unspecified",
-                    repo_commit: str | None = None) -> dict:
+                    repo_commit: str | None = None,
+                    pack_result_paths: list[str] | None = None) -> dict:
     if not bundle_paths:
         raise ValueError("At least one evidence bundle is required")
     if not agent_name.strip() or not model_id.strip() or not adapter_version.strip():
@@ -62,6 +64,8 @@ def build_scorecard(bundle_paths: list[str], agent_name: str, model_id: str,
     for rate in rates:
         product *= rate
     balanced = round(product ** (1 / len(rates)) * 100, 2)
+    pack_results = [json.loads(Path(raw).read_text(encoding="utf-8")) for raw in (pack_result_paths or [])]
+    gri = build_gri(pack_results, DEFAULT_DOMAINS)
     now = datetime.now(timezone.utc).isoformat()
     scorecard = {
         "format": "agent-gauntlet-scorecard-v1",
@@ -70,7 +74,7 @@ def build_scorecard(bundle_paths: list[str], agent_name: str, model_id: str,
         "operator": operator,
         "benchmark": {"suite_count": len(suites), "case_count": sum(x["cases"] for x in suites.values()),
                       "suites": suites},
-        "balanced_behavior_index": balanced,
+        "balanced_behavior_index": balanced,\n        "gri": gri,
         "index_explanation": "Geometric mean of the submitted suites' behavior pass rates. Not a universal intelligence, safety, or capability score. Compare only identical challenge versions and suite coverage.",
         "evidence": evidence_refs,
         "provenance": build_provenance(bundle_paths, repo_commit=repo_commit),
