@@ -19,18 +19,16 @@ The local command adapter is implemented. The experimental persistent-process JS
 ## Evidence and trust boundaries
 - Challenge payloads are parsed as data, not imported as Python.
 - SHA-256 inventories detect payload changes relative to the manifest.
-- The evidence and scorecard formats are unsigned. A submitter can generate a fresh internally consistent bundle.
+- Evidence bundles remain unsigned by default. Scorecards include canonical provenance roots and optionally carry detached OpenSSH signatures. A submitter can still generate a fresh internally consistent bundle.
 - Deterministic case reconstruction and score recomputation validate evaluator consistency, not semantic truth or honest model execution.
 - Agent/model/version fields are operator declarations, not authenticated identities.
 - The evaluator is a narrow challenge contract, not a general-purpose hallucination detector.
 
 ## Planned, separate milestones
-1. Cross-run provenance signatures and verified scorecards.
-2. Defense-in-depth POSIX process controls, clearly labeled as best-effort containment and never as a hostile-code sandbox.
-3. Optional detached cryptographic signatures and documented key lifecycle.
-4. Expand deterministic semantic assertions with typed derivations and source-to-claim constraints.
-5. Independent verifier test vectors and cross-language implementations.
-6. Federated publication and independent reproduction formats.
+1. Federated leaderboard inclusion gates with registered signer identities and minimum seed coverage.
+2. Cross-domain Gauntlet Reliability Index with explicit coverage and penalty disclosures.
+3. Deterministic reference runs and independent reproduction reports.
+4. Independent verifier test vectors and cross-language implementations.
 
 ## Integration policy
 Huffman Protocol, Mesh Archivist, and other projects may provide optional adapters or packaging integrations. The core runner must remain independently useful and have no mandatory runtime dependencies.

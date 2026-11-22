@@ -9,6 +9,7 @@ from .runner import run, verify
 from .pack_runner import discover_pack_ids, evaluate_response_file, evaluate_response, load_pack
 from .tool_loop import run_tool_loop
 from .containment import ContainmentPolicy
+from .attestation import sign_scorecard
 
 
 def main():
@@ -48,8 +49,17 @@ def main():
     card.add_argument("--adapter-version", required=True)
     card.add_argument("--operator", default="unspecified")
     card.add_argument("--output", default="scorecard.json")
+    card.add_argument("--repo-commit", help="explicit source repository commit to include in provenance")
+    card.add_argument("--signing-key", help="OpenSSH private key used to sign the canonical bundle root")
+    card.add_argument("--signer-identity", help="identity registered in the verifier allowed_signers file")
+    card.add_argument("--signature-output", help="detached signature path; defaults to <output>.sig")
+    card.add_argument("--namespace", default="agent-gauntlet")
     card_verify = sub.add_parser("verify-scorecard", help="verify a scorecard's self-integrity digest")
     card_verify.add_argument("--scorecard", required=True)
+    card_verify.add_argument("--signature", help="detached OpenSSH signature file")
+    card_verify.add_argument("--allowed-signers", help="OpenSSH allowed_signers trust file")
+    card_verify.add_argument("--signer-identity", help="expected signer identity")
+    card_verify.add_argument("--namespace", default="agent-gauntlet")
     args = parser.parse_args()
     try:
         if args.command == "run":
@@ -119,14 +129,25 @@ def main():
                 return 1
         elif args.command == "scorecard":
             scorecard = build_scorecard(args.bundle, args.agent_name, args.model_id,
-                                        args.adapter_version, args.operator)
+                                        args.adapter_version, args.operator, repo_commit=args.repo_commit)
+            signature = None
+            if args.signing_key:
+                if not args.signer_identity:
+                    raise ValueError("--signer-identity is required with --signing-key")
+                signature = sign_scorecard(
+                    scorecard, args.signing_key, args.signer_identity,
+                    args.signature_output or (args.output + ".sig"), args.namespace
+                )
+            elif args.signer_identity or args.signature_output:
+                raise ValueError("--signer-identity and --signature-output require --signing-key")
             path = write_scorecard(scorecard, args.output)
             print(json.dumps({"scorecard": str(path), "scorecard_sha256": scorecard["scorecard_sha256"],
                               "balanced_behavior_index": scorecard["balanced_behavior_index"],
                               "suite_count": scorecard["benchmark"]["suite_count"],
-                              "case_count": scorecard["benchmark"]["case_count"]}, indent=2))
+                              "case_count": scorecard["benchmark"]["case_count"], "signature": str(signature) if signature else None}, indent=2))
         else:
-            print(json.dumps(verify_scorecard(args.scorecard), indent=2))
+            print(json.dumps(verify_scorecard(args.scorecard, args.signature, args.allowed_signers,
+                                             args.signer_identity, args.namespace), indent=2))
         return 0
     except (OSError, ValueError, KeyError, RuntimeError, json.JSONDecodeError) as exc:
         parser.exit(2, f"agent-gauntlet: error: {exc}\n")

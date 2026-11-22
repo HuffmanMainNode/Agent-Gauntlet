@@ -8,10 +8,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .runner import canonical_bytes, digest, verify
+from .attestation import build_provenance, verify_scorecard_signature, NAMESPACE, AttestationError
 
 
 def build_scorecard(bundle_paths: list[str], agent_name: str, model_id: str,
-                    adapter_version: str, operator: str = "unspecified") -> dict:
+                    adapter_version: str, operator: str = "unspecified",
+                    repo_commit: str | None = None) -> dict:
     if not bundle_paths:
         raise ValueError("At least one evidence bundle is required")
     if not agent_name.strip() or not model_id.strip() or not adapter_version.strip():
@@ -71,8 +73,9 @@ def build_scorecard(bundle_paths: list[str], agent_name: str, model_id: str,
         "balanced_behavior_index": balanced,
         "index_explanation": "Geometric mean of the submitted suites' behavior pass rates. Not a universal intelligence, safety, or capability score. Compare only identical challenge versions and suite coverage.",
         "evidence": evidence_refs,
+        "provenance": build_provenance(bundle_paths, repo_commit=repo_commit),
         "environment": {"python": platform.python_version(), "platform": platform.platform()},
-        "attestation": "unsigned-operator-submission",
+        "attestation": {"status": "unsigned", "scheme": None, "identity": None, "namespace": None, "signature_file": None, "signed_object": None},
         "limitations": [
             "Evidence bundle integrity and evaluator consistency are verified; agent identity and honest execution are not.",
             "Evidence references do not prove semantic entailment or source truth.",
@@ -91,7 +94,9 @@ def write_scorecard(scorecard: dict, output: str) -> Path:
     return path
 
 
-def verify_scorecard(path: str) -> dict:
+def verify_scorecard(path: str, signature_path: str | None = None,
+                     allowed_signers: str | None = None, signer_identity: str | None = None,
+                     namespace: str = NAMESPACE) -> dict:
     scorecard = json.loads(Path(path).read_text(encoding="utf-8"))
     if scorecard.get("format") != "agent-gauntlet-scorecard-v1":
         raise ValueError("Unsupported scorecard format")
@@ -101,7 +106,21 @@ def verify_scorecard(path: str) -> dict:
         raise ValueError("Scorecard digest mismatch")
     if not scorecard.get("evidence"):
         raise ValueError("Scorecard has no evidence references")
+    attestation = scorecard.get("attestation", {})
+    signature_inputs = (signature_path, allowed_signers, signer_identity)
+    if any(signature_inputs) and not all(signature_inputs):
+        raise ValueError("signature, allowed_signers, and signer_identity must be supplied together")
+    signature_report = None
+    if all(signature_inputs):
+        signature_report = verify_scorecard_signature(
+            scorecard, signature_path, allowed_signers, signer_identity, namespace
+        )
+    status = attestation.get("status", "unknown") if isinstance(attestation, dict) else "legacy-unsigned"
+    if status == "signed" and signature_report is None:
+        status = "signature-present-not-verified"
+    elif signature_report:
+        status = "verified"
     return {"valid": True, "scorecard_sha256": recorded,
             "suites": scorecard["benchmark"]["suite_count"],
             "cases": scorecard["benchmark"]["case_count"],
-            "attestation": scorecard.get("attestation")}
+            "attestation": status, "signature": signature_report}

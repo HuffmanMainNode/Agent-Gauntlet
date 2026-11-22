@@ -85,7 +85,7 @@ python -m gauntlet scorecard --bundle artifacts/adversarial/RUN_ID \
 python -m gauntlet verify-scorecard --scorecard scorecard.json
 ```
 
-Scorecards are unsigned operator submissions, not authenticated rankings or certifications. See [Global Benchmark Standard](docs/GLOBAL-BENCHMARK-STANDARD.md) and [score submission rules](leaderboard/README.md).
+Scorecards include a canonical SHA-256 provenance root and can optionally carry a detached OpenSSH custody signature. A signature proves key-holder custody over the root digest, not agent identity or behavioral honesty. See [score submission rules](leaderboard/README.md).
 
 ## Community model
 
@@ -105,7 +105,7 @@ The adversarial runner executes an explicitly configured command supplied by the
 
 ## Project status
 
-**Prototype / experimental.** The local fixture runner, evidence verifier, local stdin/stdout subprocess adapters, deterministic assertion operators, and experimental persistent-process JSONL session protocol are implemented. Ten declarative Challenge Laboratory packs are populated and structurally tested. Remote adapters, hardened sandboxed execution, cryptographic signatures, independent result federation, and production-grade security review remain pending.
+**Prototype / experimental.** The local fixture runner, evidence verifier, local stdin/stdout subprocess adapters, deterministic assertion operators, and experimental persistent-process JSONL session protocol are implemented. Ten declarative Challenge Laboratory packs are populated and structurally tested. Remote adapters, hardened sandboxed execution, federated leaderboard inclusion gates and independent result reproduction, and production-grade security review remain pending.
 
 See [Architecture](docs/ARCHITECTURE.md), [Scoring](docs/SCORING.md), [Security](SECURITY.md), [Contributing](CONTRIBUTING.md), and the [Failure Ledger](docs/FAILURE-LEDGER.md).
 
