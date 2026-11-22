@@ -165,6 +165,16 @@ def attestation_payload(provenance: dict[str, Any]) -> bytes:
         raise AttestationError("challenge_pack_hashes must map pack IDs to SHA-256 digests")
     if provenance["root_algorithm"] != "sha256(sorted-path-hash-pairs-v1)":
         raise AttestationError("unsupported provenance root algorithm")
+    result_hashes = provenance["pack_result_hashes"]
+    if (type(provenance["pack_result_count"]) is not int or provenance["pack_result_count"] < 0
+            or not isinstance(result_hashes, list)
+            or len(result_hashes) != provenance["pack_result_count"]):
+        raise AttestationError("pack-result count and hash inventory are inconsistent")
+    for item in result_hashes:
+        if (not isinstance(item, dict) or not isinstance(item.get("pack_id"), str)
+                or not isinstance(item.get("sha256"), str) or len(item["sha256"]) != 64
+                or any(char not in "0123456789abcdef" for char in item["sha256"])):
+            raise AttestationError("pack-result hash inventory contains an invalid entry")
     return canonical_bytes({
         "format": ATTESTATION_FORMAT,
         "repo_commit": provenance["repo_commit"],
