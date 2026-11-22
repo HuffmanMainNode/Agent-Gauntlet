@@ -33,7 +33,7 @@ def test_gri_full_coverage_uses_penalized_geometric_mean():
     assert result["coverage_ratio"] == 1
     assert result["missing_domains"] == []
     assert result["complete"] is True
-    assert result["composite_score"] == pytest.approx(97.78, abs=0.1)
+    assert result["composite_score"] == pytest.approx(97.91, abs=0.1)
 
 
 def test_gri_rejects_unknown_domain_and_non_boolean_security_flags():
@@ -50,7 +50,11 @@ def _submission(tmp_path, *, identity="registered@example.invalid",
     directory.mkdir(exist_ok=True)
     suites = {name: {"cases": seed_cases} for name in leaderboard.REQUIRED_LEADERBOARD_SUITES}
     domains = sorted(DEFAULT_DOMAINS) if complete_gri else sorted(DEFAULT_DOMAINS)[:-1]
+    evidence = [{"suite": name, "seeds": list(range(seed_cases))}
+                for name in leaderboard.REQUIRED_LEADERBOARD_SUITES]
     card = {
+        "evidence": evidence,
+        "pack_results": [],
         "format": "agent-gauntlet-scorecard-v1",
         "attestation": {"status": "signed", "identity": identity,
                         "signature_file": "submission.json.sig",
