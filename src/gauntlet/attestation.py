@@ -141,7 +141,8 @@ def build_provenance(bundle_paths: list[str], repo_root: str | Path | None = Non
         "bundle_root_sha256": root_hash,
         "bundle_file_count": sum(1 for item in entries if item["path"].startswith("bundles/")),
         "challenge_pack_count": len(packs),
-        "pack_result_count": pack_result_count,\n        "pack_result_hashes": sorted(pack_result_hashes, key=lambda item: (item["pack_id"], str(item["seed"]), item["sha256"])),
+        "pack_result_count": pack_result_count,
+        "pack_result_hashes": sorted(pack_result_hashes, key=lambda item: (item["pack_id"], str(item["seed"]), item["sha256"])),
         "root_algorithm": "sha256(sorted-path-hash-pairs-v1)",
     }
 
@@ -170,7 +171,8 @@ def attestation_payload(provenance: dict[str, Any]) -> bytes:
         "challenge_pack_hashes": provenance["challenge_pack_hashes"],
         "bundle_root_sha256": root_hash,
         "root_algorithm": provenance["root_algorithm"],
-        "pack_result_count": provenance["pack_result_count"],\n        "pack_result_hashes": provenance["pack_result_hashes"],
+        "pack_result_count": provenance["pack_result_count"],
+        "pack_result_hashes": provenance["pack_result_hashes"],
     })
 
 
