@@ -24,7 +24,7 @@ class ToolDispatcher:
         self.fixture = fixture
         self.allowed_tools = set(allowed_tools)
         self.attempts: Counter[str] = Counter()
-        self.completed: dict[str, dict] = {}
+        self.completed: dict[str, Any] = {}
         self.exhausted: set[str] = set()
 
     def dispatch(self, tool: str, arguments: dict) -> dict:
