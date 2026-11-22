@@ -53,7 +53,7 @@ def test_generated_scorecard_matches_schema(tmp_path):
         adapter_version="schema-test-1", operator="ci",
     )
     scorecard = build_scorecard(
-        [str(bundle)], "Schema Fixture Agent", "schema-fixture/v1", "schema-test-1"
+        [str(bundle)], "Schema Fixture Agent", "schema-fixture/v1", "schema-test-1", operator="ci"
     )
     validator = Draft202012Validator(
         load_schema("scorecard.schema.json"), format_checker=FormatChecker()
