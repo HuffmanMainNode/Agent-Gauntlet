@@ -111,7 +111,9 @@ def verify(bundle):
             if not isinstance(row, dict) or not {"case", "response", "execution", "evaluation"} <= set(row):
                 raise ValueError("Malformed adversarial result row")
             case = row["case"]
-            if case != build_case(suite, case.get("seed")):
+            if not isinstance(case, dict) or type(case.get("seed")) is not int:
+                raise ValueError("Malformed challenge case or seed")
+            if case != build_case(suite, case["seed"]):
                 raise ValueError(f"Challenge case does not match deterministic generator: {case.get('case_id')}")
             if not isinstance(row["response"], dict):
                 raise ValueError("Adapter response must be a JSON object")
