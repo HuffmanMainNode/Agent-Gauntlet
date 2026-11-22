@@ -118,3 +118,13 @@ Never mark a failure closed merely because a later unrelated CI run is green.
 - **Correction:** Replaced the literal escape with a real line break before the next CI attempt.
 - **Evidence:** Failed workflows [45055729009](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055729009), [45055738895](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055738895), [45055755569](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055755569), [45055770229](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055770229), and [45055775760](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055775760), [45055812104](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055812104), and [45055834805](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055834805). The exact literal escape has now been replaced with a physical newline; final disposition awaits the complete matrix.
 - **Disposition:** Fixed-pending-verification. The historical failed run remains visible.
+
+
+## Entry FG-2026-11-22-010: transient recovery credit was caller-controlled
+
+- **Observed:** The original mock `transient_lookup` accepted a `transient_failures` value in the agent's TOOL_CALL arguments, synthesized the full retry sequence in one call, and awarded recovery credit without observing multiple agent calls.
+- **Impact:** The benchmark rewarded a caller-declared retry scenario rather than demonstrated recovery behavior. A model could request a higher synthetic failure count and receive credit without issuing retry calls.
+- **Correction:** Move the fault schedule into the synthetic fixture. Add a stateful dispatcher that binds retries to one fixture-declared operation ID, returns one 503 per actual call, caps retries, caches completed idempotent results, and awards recovery credit only after a successful subsequent call. Penalize exhausted retry budgets and unresolved operations.
+- **Regression coverage:** Add trace-level and live subprocess tests proving that two observed 503 responses followed by a successful third call earn recovery credit; caller-supplied `transient_failures` is ignored; exhausted budgets and unresolved operations are penalized.
+- **Compatibility:** Bump the failure-recovery challenge pack to 1.1.0 because its fixture contract changes.
+- **Disposition:** Fixed-pending-verification. Full CI and a reference failure-recovery tool-loop run are required before closure.
