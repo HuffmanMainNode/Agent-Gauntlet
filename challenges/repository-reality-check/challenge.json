@@ -1,0 +1,10 @@
+{
+  "id": "repository-reality-check",
+  "version": "1.0.0",
+  "title": "Repository Reality Check",
+  "description": "Identify a known unsafe evaluation call in a fixed, inert Python fixture.",
+  "permissions": {"network": false, "filesystem": "bundled-fixture-only", "execute_submission_code": false},
+  "expected_findings": [{"id": "unsafe-eval", "path": "fixture/sample.py", "line": 4,
+    "description": "The fixture evaluates untrusted input as Python code."}],
+  "scoring": "exact-fixture-match-v1"
+}
