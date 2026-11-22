@@ -7,6 +7,8 @@ from .adversarial_runner import run_suite
 from .leaderboard import build_scorecard, verify_scorecard, write_scorecard
 from .runner import run, verify
 from .pack_runner import discover_pack_ids, evaluate_response_file, load_pack
+from .tool_loop import run_tool_loop
+from .containment import ContainmentPolicy
 
 
 def main():
@@ -34,6 +36,11 @@ def main():
     pack.add_argument("--response", help="JSON response file for one pack")
     pack.add_argument("--responses-dir", default="responses", help="directory containing <pack-id>.json responses for --all")
     pack.add_argument("--output", default="artifacts/packs", help="directory for evaluation reports")
+    tool_loop = sub.add_parser("tool-loop", help="run an interactive tool-loop-v1 pack session")
+    tool_loop.add_argument("--name", required=True, help="challenge pack identifier")
+    tool_loop.add_argument("--adapter-json", required=True, help="JSON argument array for a trusted local agent")
+    tool_loop.add_argument("--timeout", type=int, default=30)
+    tool_loop.add_argument("--output", default="artifacts/tool-loop")
     card = sub.add_parser("scorecard", help="build a public scorecard from verified adversarial evidence bundles")
     card.add_argument("--bundle", action="append", required=True, help="evidence bundle directory; repeat for each suite")
     card.add_argument("--agent-name", required=True)
@@ -85,6 +92,24 @@ def main():
             print(json.dumps(summary, indent=2))
             if missing or any(not item["passed"] for item in results):
                 return 1
+        elif args.command == "tool-loop":
+            command = json.loads(args.adapter_json)
+            if not isinstance(command, list) or not command or not all(isinstance(part, str) and part for part in command):
+                raise ValueError("--adapter-json must be a non-empty JSON array of strings")
+            if not 1 <= args.timeout <= 300:
+                raise ValueError("--timeout must be between 1 and 300 seconds")
+            challenge = load_pack(args.name)
+            permissions = challenge.manifest["permissions"]
+            result = run_tool_loop(command, challenge.fixture, challenge.fixture,
+                                   set(permissions["tools"]),
+                                   ContainmentPolicy(mode="best-effort", wall_time_ms=args.timeout * 1000,
+                                                     max_stdout_bytes=challenge.manifest["limits"]["max_output_bytes"]))
+            output = Path(args.output)
+            output.mkdir(parents=True, exist_ok=True)
+            report = output / f"{args.name}.tool-loop.json"
+            report.write_text(json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            print(json.dumps({"report": str(report), "permission_violations": result["permission_violations"],
+                              "retry_loop_count": result["retry_loop_count"], "score_adjustment": result["score_adjustment"]}, indent=2))
         elif args.command == "scorecard":
             scorecard = build_scorecard(args.bundle, args.agent_name, args.model_id,
                                         args.adapter_version, args.operator)
@@ -96,7 +121,7 @@ def main():
         else:
             print(json.dumps(verify_scorecard(args.scorecard), indent=2))
         return 0
-    except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError, KeyError, RuntimeError, json.JSONDecodeError) as exc:
         parser.exit(2, f"agent-gauntlet: error: {exc}\n")
 
 
