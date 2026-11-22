@@ -5,7 +5,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from .containment import (ContainmentPolicy, ContainmentUnavailableError, _limit_plan,\n                          _minimal_environment, _probe_namespaces, resource)
+from .containment import (ContainmentPolicy, ContainmentUnavailableError, _limit_plan,
+                          _minimal_environment, _probe_namespaces, resource)
 
 PROTOCOL = "tool-loop-v1"
 MAX_TURNS = 32
