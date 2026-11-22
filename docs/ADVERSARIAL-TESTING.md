@@ -56,3 +56,15 @@ python -m gauntlet adversarial --suite stateful --protocol jsonl-session \
 ```
 
 The session process is trusted local code and remains unsandboxed. Do not run untrusted adapters on a host with secrets or sensitive data.
+
+## Deterministic challenge assertions (experimental)
+
+Challenge authors may attach an `assertions` array to a generated case. Each rule is evaluated against the adapter's structured JSON response. Supported operators are:
+
+- `exact_match`: `{"op":"exact_match","path":"claims[*].text","expected":"approved"}`
+- `numeric_tolerance`: `{"op":"numeric_tolerance","path":"claims[*].text","expected":42,"tolerance":0.01}`
+- `must_abstain`: `{"op":"must_abstain","field":"abstain","expected":true}`
+- `must_surface_conflict_ids`: `{"op":"must_surface_conflict_ids","field":"conflict_ids","expected":["E1","E2"]}`
+- `forbidden_substrings`: `{"op":"forbidden_substrings","values":["private-token"]}`
+
+Paths are dotted object paths; a terminal `[*]` expands an array at that segment. These are deterministic contract checks, not natural-language entailment. They do not prove that cited evidence semantically supports a claim. Invalid or unknown rules fail closed and are preserved in the evaluation report. Avoid placing secrets in challenge definitions: forbidden values are included in the challenge package and are not secret test material.
