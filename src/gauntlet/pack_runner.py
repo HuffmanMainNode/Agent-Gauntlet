@@ -92,6 +92,7 @@ def _validate_manifest(m, pack_id):
     if (perms.get("network") is not False or perms.get("filesystem") != "bundled-fixture-only"
             or perms.get("execute_submission_code") is not False
             or not isinstance(perms.get("tools"), list)
+            or not all(isinstance(tool, str) for tool in perms["tools"])
             or len(perms["tools"]) != len(set(perms["tools"]))
             or any(tool not in allowed_tools for tool in perms["tools"])):
         raise PackValidationError("permissions exceed the data-only tool allowlist")
