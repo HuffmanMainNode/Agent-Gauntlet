@@ -27,3 +27,12 @@ Seeded values change each run while remaining reproducible. A future live-data s
 ## Safety
 
 The command adapter executes a command explicitly supplied by the operator. It is not a sandbox. Use a disposable environment and a deliberately restricted adapter. Never pass secrets or private data in challenge inputs.
+
+
+## Command adapter contract
+
+Use `agent-gauntlet adversarial --suite SUITE --adapter-json '["executable","arg"]' --seeds 1,2,3`. The adapter receives a JSON task on stdin and returns one JSON object on stdout. The adapter is explicitly trusted local code. The runner uses argument-list execution (no shell), a timeout, and a reduced environment, but does not sandbox the process or restrict filesystem/network access. Use a disposable VM/container configured by the operator.
+
+## Current evaluator limitations
+
+The current checks validate task-specific required behavior and evidence-ID traceability. They do not independently prove semantic entailment, source authenticity, factual truth, model identity, or resistance to all prompt-injection techniques. Confidence values are retained in raw responses but are not scored as calibrated probabilities. Those features require labeled corpora, independent evaluation, and statistical validation.
