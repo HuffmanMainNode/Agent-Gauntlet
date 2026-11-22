@@ -53,6 +53,10 @@ python -m gauntlet tool-loop --name evidence-integrity --adapter-json '["python"
 
 The tool-loop runner sends TASK_INIT, intercepts TOOL_CALL, returns TOOL_RESULT, and requires FINAL_COMMIT. Permission denials return 403 and are counted. Built-in mock tools are deterministic and offline.
 
+## Release checkpoint
+
+The Commit 39-45 engineering sequence is recorded in the [22 November 2026 release checkpoint](docs/RELEASE-CHECKPOINT-2026-11-22.md), with the verified 25-seed [baseline report](docs/REFERENCE-BASELINE-REPORT.md).
+
 ## Reliability index and federated leaderboard
 
 The cross-domain GRI reports coverage, missing domains, and security-penalized domains. Permission violations or injection breaches zero the affected domain. The federated admission gate requires a valid OpenSSH signature from a registered signer, all six executable suites with at least 25 distinct seeds each, and full ten-domain coverage. See [GRI and Leaderboard](docs/GRI-AND-LEADERBOARD.md).
