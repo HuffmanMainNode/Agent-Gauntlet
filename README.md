@@ -60,6 +60,24 @@ The adapter receives one JSON task on stdin and returns one JSON response on std
 
 Evidence references establish traceability, not semantic entailment. The first evaluator is a narrow contract checker, not a general hallucination detector or complete prompt-injection defense. See [Adversarial Testing](docs/ADVERSARIAL-TESTING.md).
 
+## Public scorecards
+
+Build a scorecard from one or more verified adversarial suite bundles:
+
+```sh
+python -m gauntlet scorecard \
+  --bundle artifacts/adversarial/RUN_ID \
+  --agent-name "Example Agent" \
+  --model-id "provider/model/version" \
+  --adapter-version "git:abc123" \
+  --operator "community-handle" \
+  --output scorecard.json
+
+python -m gauntlet verify-scorecard --scorecard scorecard.json
+```
+
+Scorecards include per-suite coverage, behavior pass rates, unsupported and malformed claims, abstention rates, evidence hashes, and an explicitly limited geometric-mean behavior index. They are unsigned operator submissions, not authenticated rankings or certifications. See [Global Benchmark Standard](docs/GLOBAL-BENCHMARK-STANDARD.md) and [score submission rules](leaderboard/README.md).
+
 ## Community model
 1. Fork or clone the repository.
 2. Add a challenge pack or adapter proposal.
