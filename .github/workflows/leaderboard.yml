@@ -9,6 +9,8 @@ on:
       - "src/gauntlet/leaderboard.py"
       - "src/gauntlet/attestation.py"
       - "src/gauntlet/gri.py"
+      - "src/gauntlet/cli.py"
+      - "src/gauntlet/pack_runner.py"
       - "schemas/scorecard.schema.json"
       - ".github/workflows/leaderboard.yml"
   push:
