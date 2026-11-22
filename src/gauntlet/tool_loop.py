@@ -127,6 +127,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
         env_probe = _minimal_environment(0, tempfile.gettempdir())
         if not _probe_namespaces(env_probe):
             raise ContainmentUnavailableError("strict tool-loop isolation probe failed")
+        command = ["unshare", "--user", "--map-root-user", "--net", "--pid", "--fork", "--", *command]
     allowed_tools = set(allowed_tools)
     with tempfile.TemporaryDirectory(prefix="gauntlet-tool-loop-") as cwd:
         env = _minimal_environment(int(fixture.get("seed", 0)), cwd)
