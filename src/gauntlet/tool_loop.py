@@ -214,6 +214,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
         dispatcher = ToolDispatcher(fixture, allowed_tools)
         expected_turn = 1
         final_commit = None
+        timed_out = False
         deadline = time.monotonic() + policy.wall_time_ms / 1000
         try:
             while time.monotonic() < deadline:
@@ -302,6 +303,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                 if final_commit is not None:
                     break
             if final_commit is None:
+                timed_out = time.monotonic() >= deadline
                 raise TimeoutError("tool-loop timed out or exited without FINAL_COMMIT")
         except Exception:
             try: os.killpg(process.pid, signal.SIGKILL)
@@ -310,12 +312,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
         finally:
             selector.close()
             returncode = finish_process_group(process)
-        containment_path.parent.mkdir(parents=True, exist_ok=True)
-        containment_path.write_text(
-            json.dumps(containment_report.to_dict(), sort_keys=True, indent=2) + "\n",
-            encoding="utf-8",
-        )
-        transcript_bytes = json.dumps(
+            transcript_bytes = json.dumps(
             transcript, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode("utf-8")
         return {"protocol":PROTOCOL,"final_commit":final_commit,"transcript":transcript,
@@ -324,7 +321,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                 "recovery_credit":recovery_credit,"unrecovered_operations":dispatcher.unresolved_operations(),
                 "score_adjustment":recovery_credit-retry_loops*5-violations*100-len(dispatcher.unresolved_operations())*10,
                 "turns":expected_turn-1,"stderr":stderr_bytes.decode("utf-8",errors="replace"),
-                "execution": {"returncode": returncode, "timed_out": False,
+                "execution": {"returncode": returncode, "timed_out": timed_out,
                               "stdout_bytes": total_output, "stderr_bytes": len(stderr_bytes),
                               "stdout_truncated": stdout_truncated,
                               "stderr_truncated": stderr_truncated},
