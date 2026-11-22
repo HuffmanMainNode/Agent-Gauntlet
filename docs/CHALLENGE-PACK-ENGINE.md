@@ -37,3 +37,14 @@ Failed attempts are retained with a bounded error description and any containmen
 The adapter command is not copied into the public evidence manifest because command-line arguments may contain credentials. The manifest records its SHA-256 together with the operator-declared adapter name and version. Keep the exact command and source revision separately for reproduction.
 
 Each run seed deterministically permutes the existing synthetic evidence records using a seed-scoped SHA-256 sort key. Evidence contents and identifiers remain unchanged; presentation order varies, and finite evidence sets mean different seeds can share a permutation. This is a presentation-order variant, not newly synthesized evidence. Local adapter code is operator-trusted and is not filesystem-sandboxed.
+
+
+## Semantic assertion coverage (challenge contract v1.1.0)
+
+The ten challenge manifests now carry stronger, versioned assertions. The scoring contract checks decision labels and provenance as before, and also checks domain-critical answer content: numeric results and units, temporal current state, authorization decisions, scientific limitations, recovery actions, resource totals, and canonical reproducibility outputs.
+
+The reproducibility pack's prior wildcard assertion compared an evidence-ID array to an object and could never express the intended contract. It now checks the normalized claim and evidence-ID array separately. The technical-reasoning pack now checks the actual byte total, unit, and calculation rather than accepting a correct behavior label with an incorrect number.
+
+The checked-in expected files act as reference oracles. CI removes oracle-only annotations such as `prohibited` and `forbidden_substrings` before evaluating the expected agent response, then requires every manifest assertion to pass for every pack. Negative tests mutate numeric and scientific fields to confirm that semantic errors reduce the score.
+
+A pack assertion change is a scoring-contract change. All ten manifests were advanced to version `1.1.0`; old and new scorecards should not be treated as directly comparable without recording the pack version.
