@@ -9,12 +9,12 @@ Challenge manifest and inert fixture data flow through a bundled fixture agent, 
 
 ### Interactive tool-loop-v1
 
-The interactive JSONL adapter sends TASK_INIT, intercepts TOOL_CALL frames through a per-pack capability allowlist, returns TOOL_RESULT frames, and terminates only on FINAL_COMMIT. The built-in mock tools are deterministic and offline. Permission denials produce 403 results and counters; repeated denied calls are identified as retry loops. Transient mock failures use bounded retry accounting with exponential delay metadata. The runner uses a process group, POSIX resource limits, bounded output, and a wall-clock deadline. It remains a trusted-code runner, not a filesystem sandbox.
+The interactive JSONL adapter sends TASK_INIT, intercepts TOOL_CALL frames through a per-pack capability allowlist, returns TOOL_RESULT frames, and terminates on FINAL_COMMIT. The built-in mock tools are deterministic and offline. Permission denials produce 403 results and counters; repeated denied calls are identified as retry loops. Transient mock failures use bounded retry accounting with exponential delay metadata. The runner uses a process group, POSIX resource limits, bounded output, and a wall-clock deadline. Strict mode requires Linux user/network/PID namespaces. Best-effort namespace parity with `run_contained`, a shared supervisor, and a unified containment report remain planned. It is a trusted-code runner, not a filesystem sandbox.
 
 ### Local command adapter
-The adversarial runner invokes an operator-configured argument vector using Python subprocess with `shell=False`, a timeout, and a deliberately minimal environment. It sends one JSON task on stdin and expects one JSON object on stdout. Each seed is a separate process invocation. This is a **single-turn local subprocess contract**, not a remote adapter, persistent session, or sandbox.
+The adversarial runner invokes an operator-configured argument vector through `gauntlet.containment.run_contained`. It sends one JSON task on stdin and expects one JSON object on stdout. Each seed is a separate process invocation. POSIX resource limits, a scrubbed environment, a temporary working directory, process-group cleanup, and bounded stdout/stderr capture are applied. Best-effort mode attempts Linux user/network/PID namespaces when available. This is a **single-turn local subprocess contract**, not a remote adapter or filesystem sandbox.
 
-The local command adapter is implemented. The experimental persistent-process JSONL session adapter is also implemented for sequential, non-interactive multi-turn tests. Neither path is secure isolation: the process retains the OS permissions and network access of its execution identity.
+The local command adapter and experimental persistent-process JSONL session adapter are implemented for sequential, non-interactive multi-turn tests. Neither path is secure filesystem isolation: the process retains the OS permissions of its execution identity, and namespace network isolation is capability- and mode-dependent.
 
 ### Deterministic reference matrix
 
@@ -22,7 +22,7 @@ Four bundled synthetic reference programs run across 14 profile/suite combinatio
 
 ### GRI and federated admission
 
-The GRI combines the ten declarative challenge domains with explicit coverage and hard security penalties. Permission violations and injection breaches force the affected domain to zero. Scorecards embed their evaluated pack results, commit canonical result hashes into the OpenSSH-signed provenance payload, and recompute the GRI during verification. The optional local leaderboard gate requires a registered signer, valid signature, six executable suites with at least 25 unique seeds per suite, and complete ten-domain coverage. This is a custody and completeness gate, not a truth oracle. See [GRI and Leaderboard](GRI-AND-LEADERBOARD.md).
+The GRI combines the ten declarative challenge domains with explicit coverage and hard security penalties. Permission violations and injection breaches force the affected domain to zero. Scorecards embed their evaluated pack results, commit canonical result hashes and a digest of all public scorecard claims into the OpenSSH-signed attestation payload, and recompute the GRI during verification. The optional local leaderboard gate requires a registered signer, valid signature, six executable suites with at least 25 unique seeds per suite, and complete ten-domain coverage. This is a custody and completeness gate, not a truth oracle. See [GRI and Leaderboard](GRI-AND-LEADERBOARD.md).
 
 ## Evidence and trust boundaries
 - Challenge payloads are parsed as data, not imported as Python.
@@ -32,11 +32,13 @@ The GRI combines the ten declarative challenge domains with explicit coverage an
 - Agent/model/version fields are operator declarations, not authenticated identities.
 - The evaluator is a narrow challenge contract, not a general-purpose hallucination detector.
 
-## Planned, separate milestones
-1. Federated leaderboard inclusion gates with registered signer identities and minimum seed coverage.
-2. Cross-domain Gauntlet Reliability Index with explicit coverage and penalty disclosures.
-3. Deterministic reference runs and independent reproduction reports.
-4. Independent verifier test vectors and cross-language implementations.
+## Remaining milestones
+1. Unify containment supervision across single-turn and interactive tool-loop execution, including best-effort namespace parity and structured capability reports.
+2. Make live tool-loop sessions and offline trace replay share one protocol validator and conformance suite.
+3. Add an end-to-end per-pack/per-seed execution pipeline that emits canonical evidence bundles, rather than relying only on separately supplied response JSON.
+4. Add portable evidence archive intake and independent replay; keep `attested` and `reproduced` as distinct result states.
+5. Enforce every checked-in JSON schema in CI and expand cross-platform containment testing.
+6. Build community participation only after external signers and reproducible submissions exist.
 
 ## Integration policy
 Huffman Protocol, Mesh Archivist, and other projects may provide optional adapters or packaging integrations. The core runner must remain independently useful and have no mandatory runtime dependencies.
