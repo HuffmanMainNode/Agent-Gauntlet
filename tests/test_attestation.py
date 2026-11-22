@@ -82,3 +82,36 @@ def test_tampered_provenance_fails_signature_verification(tmp_path):
     card["provenance"]["repo_commit"]="forged-commit"
     with pytest.raises(AttestationError,match="verification failed"):
         verify_scorecard_signature(card,signature,allowed,identity,namespace)
+
+def test_bundle_order_does_not_change_canonical_root(tmp_path):
+    first=make_bundle(tmp_path/"first")
+    second=make_bundle(tmp_path/"second")
+    a=build_provenance([str(first),str(second)],repo_root=ROOT,repo_commit="stable")
+    b=build_provenance([str(second),str(first)],repo_root=ROOT,repo_commit="stable")
+    assert a["bundle_root_sha256"]==b["bundle_root_sha256"]
+
+@pytest.mark.skipif(shutil.which("ssh-keygen") is None,reason="OpenSSH ssh-keygen unavailable")
+def test_scorecard_cli_signs_and_verifies(tmp_path):
+    import sys
+    bundle=make_bundle(tmp_path)
+    key=tmp_path/"cli_key"
+    subprocess.run(["ssh-keygen","-q","-t","ed25519","-N","","-f",str(key)],check=True)
+    pub=(tmp_path/"cli_key.pub").read_text().split()
+    identity="cli-agent@example.invalid";namespace="agent-gauntlet"
+    allowed=tmp_path/"cli_allowed_signers"
+    allowed.write_text(f'{identity} namespaces="{namespace}" {pub[0]} {pub[1]}\n')
+    card=tmp_path/"signed-card.json"
+    created=subprocess.run([
+        sys.executable,"-m","gauntlet","scorecard","--bundle",str(bundle),
+        "--agent-name","Attested Agent","--model-id","example/model-v1",
+        "--adapter-version","adapter-1","--signing-key",str(key),
+        "--signer-identity",identity,"--output",str(card)
+    ],cwd=ROOT,capture_output=True,text=True,check=False)
+    assert created.returncode==0,created.stderr
+    verified=subprocess.run([
+        sys.executable,"-m","gauntlet","verify-scorecard","--scorecard",str(card),
+        "--signature",str(card)+".sig","--allowed-signers",str(allowed),
+        "--signer-identity",identity
+    ],cwd=ROOT,capture_output=True,text=True,check=False)
+    assert verified.returncode==0,verified.stderr
+    assert json.loads(verified.stdout)["attestation"]=="verified"
