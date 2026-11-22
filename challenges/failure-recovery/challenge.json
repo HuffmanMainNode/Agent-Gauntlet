@@ -1,0 +1,33 @@
+{
+  "id": "failure-recovery",
+  "version": "1.0.0",
+  "title": "Failure Recovery: Partial Write and Retry",
+  "category": "failure-recovery",
+  "difficulty": "expert",
+  "description": "Recover safely from a batch write where record 3 timed out before acknowledgement and records 4 and 5 were not attempted.",
+  "seed": 20261122,
+  "fixture": "fixture.json",
+  "expected": "expected.json",
+  "provenance": {
+    "classification": "synthetic",
+    "created_for": "Agent Gauntlet Challenge Laboratory",
+    "real_world_evidence": false
+  },
+  "permissions": {
+    "network": false,
+    "filesystem": "bundled-fixture-only",
+    "execute_submission_code": false
+  },
+  "scoring": {
+    "contract": "declarative-challenge-v1",
+    "behavior_weight": 70,
+    "traceability_weight": 20,
+    "format_weight": 10,
+    "unknowns_must_be_disclosed": true
+  },
+  "limits": {
+    "time_seconds": 120,
+    "max_output_bytes": 32768,
+    "external_dependencies": false
+  }
+}

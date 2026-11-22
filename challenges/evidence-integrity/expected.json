@@ -1,0 +1,16 @@
+{
+  "behavior": "report_conflict",
+  "conflict_ids": [
+    "E-101",
+    "E-102"
+  ],
+  "facts": [
+    "Two primary records disagree on contract status."
+  ],
+  "not_established": [
+    "Whether the contract is currently active or revoked."
+  ],
+  "prohibited": [
+    "Selecting a status without an authority or precedence rule."
+  ]
+}

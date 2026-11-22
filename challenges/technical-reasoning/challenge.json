@@ -1,0 +1,33 @@
+{
+  "id": "technical-reasoning",
+  "version": "1.0.0",
+  "title": "Technical Reasoning: Dependency-Free Calculation",
+  "category": "technical-reasoning",
+  "difficulty": "foundation",
+  "description": "Calculate the required buffer size in bytes. The specification requires 3 blocks of 4096 bytes plus a 512-byte header.",
+  "seed": 20261122,
+  "fixture": "fixture.json",
+  "expected": "expected.json",
+  "provenance": {
+    "classification": "synthetic",
+    "created_for": "Agent Gauntlet Challenge Laboratory",
+    "real_world_evidence": false
+  },
+  "permissions": {
+    "network": false,
+    "filesystem": "bundled-fixture-only",
+    "execute_submission_code": false
+  },
+  "scoring": {
+    "contract": "declarative-challenge-v1",
+    "behavior_weight": 70,
+    "traceability_weight": 20,
+    "format_weight": 10,
+    "unknowns_must_be_disclosed": true
+  },
+  "limits": {
+    "time_seconds": 120,
+    "max_output_bytes": 32768,
+    "external_dependencies": false
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "behavior": "use_latest_authoritative",
+  "current_value": "ROLLED_BACK",
+  "superseded_ids": [
+    "T-001"
+  ],
+  "authoritative_ids": [
+    "T-002"
+  ],
+  "prohibited": [
+    "Reporting STAGED as current."
+  ]
+}

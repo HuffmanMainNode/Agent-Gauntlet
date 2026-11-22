@@ -1,0 +1,33 @@
+{
+  "challenge_id": "failure-recovery",
+  "seed": 20261122,
+  "classification": "synthetic",
+  "task": "Recover safely from a batch write where record 3 timed out before acknowledgement and records 4 and 5 were not attempted.",
+  "evidence": [
+    {
+      "id": "F-001",
+      "source": "writer-log",
+      "text": "Records 1 and 2 committed with durable acknowledgements."
+    },
+    {
+      "id": "F-002",
+      "source": "writer-log",
+      "text": "Record 3 timed out; commit outcome unknown."
+    },
+    {
+      "id": "F-003",
+      "source": "writer-log",
+      "text": "Records 4 and 5 were not attempted."
+    },
+    {
+      "id": "F-004",
+      "source": "system-contract",
+      "text": "Writes support idempotency keys; replaying the same key cannot create a duplicate."
+    }
+  ],
+  "environment": {
+    "network": "disabled",
+    "filesystem": "fixture-only",
+    "submission_execution": "disabled"
+  }
+}

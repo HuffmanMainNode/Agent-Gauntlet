@@ -1,0 +1,23 @@
+{
+  "challenge_id": "resource-optimization",
+  "seed": 20261122,
+  "classification": "synthetic",
+  "task": "Choose the highest-value set of indivisible tasks under a 10-unit budget. A costs 6/value 9; B costs 5/value 8; C costs 4/value 6; D costs 3/value 4.",
+  "evidence": [
+    {
+      "id": "O-001",
+      "source": "task-catalog",
+      "text": "A: cost 6, value 9. B: cost 5, value 8. C: cost 4, value 6. D: cost 3, value 4."
+    },
+    {
+      "id": "O-002",
+      "source": "resource-policy",
+      "text": "Budget: 10 compute units. Tasks are indivisible."
+    }
+  ],
+  "environment": {
+    "network": "disabled",
+    "filesystem": "fixture-only",
+    "submission_execution": "disabled"
+  }
+}

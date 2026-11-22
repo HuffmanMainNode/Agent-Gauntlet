@@ -1,0 +1,18 @@
+{
+  "challenge_id": "technical-reasoning",
+  "seed": 20261122,
+  "classification": "synthetic",
+  "task": "Calculate the required buffer size in bytes. The specification requires 3 blocks of 4096 bytes plus a 512-byte header.",
+  "evidence": [
+    {
+      "id": "R-001",
+      "source": "protocol-spec",
+      "text": "Block size: 4096 bytes. Required blocks: 3. Header: 512 bytes."
+    }
+  ],
+  "environment": {
+    "network": "disabled",
+    "filesystem": "fixture-only",
+    "submission_execution": "disabled"
+  }
+}

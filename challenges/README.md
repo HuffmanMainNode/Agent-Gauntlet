@@ -1,35 +1,43 @@
 # Challenge Pack Catalog
 
-Challenge packs are data and evaluation contracts. They must not execute code merely by being loaded.
+Challenge packs are versioned data contracts. Loading a pack must not execute code, contact a network, or access files outside its bundled fixture.
 
-The current adversarial suites are generated from versioned evaluator logic and explicit seeds:
+## Challenge Laboratory
+
+Ten initial packs are available under this directory:
+
+| Pack | Category | Level | Focus |
+|---|---|---|---|
+| [evidence-integrity](evidence-integrity/) | Evidence integrity | Advanced | Conflicting primary records |
+| [temporal-reasoning](temporal-reasoning/) | Temporal reasoning | Advanced | Authoritative updates and stale values |
+| [instruction-resistance](instruction-resistance/) | Instruction resistance | Expert | Untrusted instructions embedded in evidence |
+| [multi-agent-coordination](multi-agent-coordination/) | Multi-agent coordination | Expert | Disagreement and evidence provenance |
+| [technical-reasoning](technical-reasoning/) | Technical reasoning | Foundation | Exact, traceable calculation |
+| [privacy-authorization](privacy-authorization/) | Privacy and authorization | Expert | Permission boundaries and withholding |
+| [scientific-reasoning](scientific-reasoning/) | Scientific reasoning | Advanced | Correlation versus causation |
+| [failure-recovery](failure-recovery/) | Failure recovery | Expert | Idempotent recovery after ambiguous commit |
+| [resource-optimization](resource-optimization/) | Resource optimization | Advanced | Bounded combinatorial selection |
+| [reproducibility](reproducibility/) | Reproducibility | Frontier | Canonical independent reproduction |
+
+Every pack contains `challenge.json`, `fixture.json`, and `expected.json`. All initial evidence is synthetic, fixed-seed, and explicitly marked. See [Challenge Laboratory](../docs/CHALLENGE-LABORATORY.md), [Authoring Standard](../docs/CHALLENGE-AUTHORING.md), and [Difficulty Standards](../docs/DIFFICULTY-STANDARDS.md).
+
+## Existing executable adversarial suites
 
 | Suite | Stress tested | Expected robust behavior |
 |---|---|---|
-| `hallucination` | Missing facts and pressure to provide precise answers | Abstain; do not invent a date |
-| `contradiction` | Conflicting source records | Surface the conflict; do not silently choose |
-| `injection` | Malicious instructions embedded in evidence | Treat embedded instructions as untrusted data |
-| `variable` | Seed-dependent numeric inputs | Recalculate from current evidence |
-| `ambiguity` | Missing approval evidence | State that evidence is insufficient |
+| `hallucination` | Missing facts | Abstain; do not invent |
+| `contradiction` | Conflicting records | Surface the conflict |
+| `injection` | Hostile evidence text | Treat it as untrusted data |
+| `variable` | Seed-dependent numbers | Recalculate |
+| `ambiguity` | Missing approval evidence | State insufficiency |
+| `stateful` | Sequential updates | Replace stale values with authoritative updates |
 
-Use multiple seeds to prevent agents from memorizing one fixed answer. A seed is recorded in the evidence bundle so another operator can reproduce the same cases.
+Run an executable suite using the CLI and adapter options documented in the root README.
 
-## Response contract
+**Integration boundary:** the ten Challenge Laboratory packs are declarative assets. A general-purpose pack loader, evaluator, and CLI execution path are future work. Do not describe these packs as executable until those components and tests have landed.
 
-An adapter receives one JSON task on stdin and must write one JSON object to stdout:
+## Response contract for existing adapters
 
-```json
-{
-  "claims": [
-    {"text": "Example Research Cooperative", "evidence_ids": ["E1"], "confidence": 0.98}
-  ],
-  "abstain": false,
-  "conflict_detected": false
-}
-```
+An adapter receives one JSON task on stdin and writes one JSON object to stdout. Claims should include evidence IDs. Evidence IDs establish traceability, not semantic entailment.
 
-Claims without valid evidence references count as unsupported. Confidence is recorded in the raw response but is not yet used for a calibrated probability score. Calibration requires a larger labeled dataset and a separately validated metric.
-
-## Limits
-
-These evaluators are deliberately narrow. Evidence IDs establish traceability, not semantic entailment. The injection evaluator checks the required answer and a known canary pattern; it is not a comprehensive prompt-injection defense test. Human review and additional independent evaluators are required for broader claims.
+The evaluator is deliberately narrow. Human review and independent evaluators remain necessary for broader claims.

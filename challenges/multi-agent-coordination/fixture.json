@@ -1,0 +1,33 @@
+{
+  "challenge_id": "multi-agent-coordination",
+  "seed": 20261122,
+  "classification": "synthetic",
+  "task": "Reconcile three agent reports. Preserve disagreement, identify the common supported fact, and do not promote an unsupported majority vote into evidence.",
+  "evidence": [
+    {
+      "id": "M-001",
+      "source": "source-record",
+      "text": "Build artifact digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa."
+    },
+    {
+      "id": "M-002",
+      "source": "agent-alpha",
+      "text": "Digest matches the source record."
+    },
+    {
+      "id": "M-003",
+      "source": "agent-beta",
+      "text": "Digest does not match; no comparison output attached."
+    },
+    {
+      "id": "M-004",
+      "source": "agent-gamma",
+      "text": "Digest matches; cites M-001."
+    }
+  ],
+  "environment": {
+    "network": "disabled",
+    "filesystem": "fixture-only",
+    "submission_execution": "disabled"
+  }
+}

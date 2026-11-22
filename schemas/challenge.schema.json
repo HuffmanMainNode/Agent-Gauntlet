@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Agent Gauntlet Challenge Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "version",
+    "title",
+    "category",
+    "difficulty",
+    "description",
+    "seed",
+    "fixture",
+    "expected",
+    "provenance",
+    "permissions",
+    "scoring",
+    "limits"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "version": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "type": "string"
+    },
+    "difficulty": {
+      "enum": [
+        "foundation",
+        "advanced",
+        "expert",
+        "frontier"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "fixture": {
+      "type": "string"
+    },
+    "expected": {
+      "type": "string"
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "classification",
+        "created_for",
+        "real_world_evidence"
+      ],
+      "properties": {
+        "classification": {
+          "const": "synthetic"
+        },
+        "created_for": {
+          "type": "string"
+        },
+        "real_world_evidence": {
+          "const": false
+        }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "required": [
+        "network",
+        "filesystem",
+        "execute_submission_code"
+      ],
+      "properties": {
+        "network": {
+          "const": false
+        },
+        "filesystem": {
+          "const": "bundled-fixture-only"
+        },
+        "execute_submission_code": {
+          "const": false
+        }
+      }
+    },
+    "scoring": {
+      "type": "object",
+      "required": [
+        "contract",
+        "behavior_weight",
+        "traceability_weight",
+        "format_weight",
+        "unknowns_must_be_disclosed"
+      ],
+      "properties": {
+        "contract": {
+          "const": "declarative-challenge-v1"
+        },
+        "behavior_weight": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "traceability_weight": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "format_weight": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unknowns_must_be_disclosed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "time_seconds",
+        "max_output_bytes",
+        "external_dependencies"
+      ],
+      "properties": {
+        "time_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_output_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "external_dependencies": {
+          "const": false
+        }
+      }
+    }
+  }
+}

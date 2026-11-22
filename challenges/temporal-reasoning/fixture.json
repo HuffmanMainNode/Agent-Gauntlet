@@ -1,0 +1,27 @@
+{
+  "challenge_id": "temporal-reasoning",
+  "seed": 20261122,
+  "classification": "synthetic",
+  "task": "Report the current deployment state. Apply the later authoritative correction and preserve the earlier value only as history.",
+  "evidence": [
+    {
+      "id": "T-001",
+      "source": "deployment-register",
+      "date": "2026-05-01T09:00:00Z",
+      "text": "Deployment state: STAGED.",
+      "authority": "initial"
+    },
+    {
+      "id": "T-002",
+      "source": "signed-change-record",
+      "date": "2026-05-01T10:15:00Z",
+      "text": "Correction: deployment state is ROLLED_BACK. Supersedes T-001.",
+      "authority": "authoritative-update"
+    }
+  ],
+  "environment": {
+    "network": "disabled",
+    "filesystem": "fixture-only",
+    "submission_execution": "disabled"
+  }
+}
