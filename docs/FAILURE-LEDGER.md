@@ -22,14 +22,14 @@
 - **Impact:** Failed attempts could disappear from the result set, undermining the benchmark's requirement to preserve failures.
 - **Correction:** Each handled adapter execution failure is now recorded as an individual failed case with error type, bounded diagnostic text, failed execution status, and zero score. The runner continues through the remaining seeds and writes the evidence bundle.
 - **Regression coverage:** New tests cover adapter timeout, malformed output, duplicate seeds, zero-score failure retention, and bundle verification.
-- **Disposition:** Implemented on the maintenance branch; pending CI and merge verification.
+- **Disposition:** Closed by PR #5 and the passing Python 3.11/3.12/3.13 workflow [45016903375](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45016903375).
 
 ## Entry FG-2026-11-22-003: README described an obsolete execution boundary
 
 - **Observed:** README statements described only the original fixture runner and said participant adapters were not executed, while the adversarial CLI had since gained an explicitly configured command adapter.
 - **Impact:** Users could misunderstand what code executes locally and the associated trust boundary.
 - **Correction:** README now distinguishes the fixture runner from the operator-supplied adapter and clearly states that the adapter is not sandboxed.
-- **Disposition:** Corrected on the maintenance branch; pending CI and merge verification.
+- **Disposition:** Closed by PR #5 and the passing Python 3.11/3.12/3.13 workflow [45016903375](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45016903375).
 
 ## Known warnings and limitations (not closed defects)
 
@@ -51,3 +51,18 @@ Every new failure record should include:
 7. Status: open, investigating, fixed-pending-verification, closed, or accepted limitation.
 
 Never mark a failure closed merely because a later unrelated CI run is green.
+
+## Entry FG-2026-11-22-004: verifier did not independently validate execution state
+
+- **Observed:** The adversarial verifier recomputed the deterministic behavior score but did not validate the execution-status record that can force a failed case to zero points.
+- **Impact:** An internally inconsistent results file could claim a failed execution while retaining a successful evaluation, and the verifier would not reject that contradiction if the artifact digest inventory were also updated.
+- **Correction:** The verifier now validates suite and seed inventory, deterministic case reconstruction, row shape, response type, execution status, failure diagnostics, and recomputes the evaluation with the correct zero-score rule for failed executions.
+- **Regression coverage:** Added tests that alter a result and update its artifact digest to ensure the verifier still rejects a failed execution with a nonzero score, and rejects a case that does not match the deterministic seed generator.
+- **Disposition:** Implemented on branch `security/strict-evidence-verification`; pending CI and independent review.
+
+## Entry FG-2026-11-22-005: public scorecards omitted execution-failure counts
+
+- **Observed:** The scorecard exposed behavior pass rates and unsupported claims but did not show adapter execution failures.
+- **Impact:** A reader could miss an important operational reliability dimension.
+- **Correction:** Added per-suite `execution_failures` to scorecard generation and the scorecard schema.
+- **Disposition:** Implemented on branch `security/strict-evidence-verification`; pending CI.

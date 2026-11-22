@@ -49,3 +49,40 @@ def test_duplicate_seeds_are_rejected_before_execution(tmp_path):
     with pytest.raises(ValueError, match="unique"):
         run_suite("hallucination", [sys.executable, "-c", "pass"], [1, 1], tmp_path,
                   agent_name="Example", model_id="example/model-v1", adapter_version="adapter-1")
+
+
+def test_verifier_rejects_failure_record_with_nonzero_score(tmp_path):
+    import hashlib
+    from gauntlet.runner import canonical_bytes
+
+    code = "import json,sys; json.load(sys.stdin); print(json.dumps({'claims': [], 'abstain': True}))"
+    bundle = run_suite("hallucination", [sys.executable, "-c", code], [31], tmp_path,
+                       agent_name="Example", model_id="example/model-v1", adapter_version="adapter-1")
+    rows = json.loads((bundle / "results.json").read_text())
+    rows[0]["execution"] = {"status": "failed", "error_type": "TimeoutError", "error": "forced test"}
+    # Deliberately retain the successful score: the verifier must reject this contradiction.
+    (bundle / "results.json").write_bytes(canonical_bytes(rows))
+    evidence = json.loads((bundle / "evidence.json").read_text())
+    evidence["artifacts"]["results.json"] = hashlib.sha256((bundle / "results.json").read_bytes()).hexdigest()
+    (bundle / "evidence.json").write_bytes(canonical_bytes(evidence))
+    import pytest
+    with pytest.raises(ValueError, match="evaluation mismatch"):
+        verify(bundle)
+
+
+def test_verifier_rejects_case_not_matching_declared_seed(tmp_path):
+    import hashlib
+    from gauntlet.runner import canonical_bytes
+
+    code = "import json,sys; json.load(sys.stdin); print(json.dumps({'claims': [], 'abstain': True}))"
+    bundle = run_suite("hallucination", [sys.executable, "-c", code], [41], tmp_path,
+                       agent_name="Example", model_id="example/model-v1", adapter_version="adapter-1")
+    rows = json.loads((bundle / "results.json").read_text())
+    rows[0]["case"]["question"] = "FORGED QUESTION"
+    (bundle / "results.json").write_bytes(canonical_bytes(rows))
+    evidence = json.loads((bundle / "evidence.json").read_text())
+    evidence["artifacts"]["results.json"] = hashlib.sha256((bundle / "results.json").read_bytes()).hexdigest()
+    (bundle / "evidence.json").write_bytes(canonical_bytes(evidence))
+    import pytest
+    with pytest.raises(ValueError, match="deterministic generator"):
+        verify(bundle)

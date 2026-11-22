@@ -1,12 +1,24 @@
 # Security Policy
 
-## Current posture
-The prototype is fixture-only. It does not execute submitted code, install challenge dependencies, access the network, invoke external agents, or read arbitrary host files.
+## Current execution boundary
+
+Agent Gauntlet has two distinct execution paths:
+
+- The fixture runner uses bundled demonstration agents and does not invoke an external model or participant command.
+- The adversarial runner executes an operator-configured command adapter on the operator's machine using `subprocess.run`, without a shell and with a timeout. This is **not a sandbox**. The adapter can access resources available to its operating-system identity, including files and network access, subject to the host environment.
+
+Do not run untrusted adapters on a workstation, CI runner, or host containing credentials, private repositories, personal data, or production access. Use a disposable environment with no secrets, restricted filesystem mounts, restricted network egress, and strict resource limits. These controls must be configured outside Agent Gauntlet today.
 
 The bundled Python fixture contains an intentionally unsafe `eval` example. It is data for inspection only and must never be executed.
 
+## Evidence limitations
+
+SHA-256 artifact digests detect accidental or later content changes relative to the manifest. The manifests are unsigned. A submitter can create a new internally consistent bundle; hashes do not authenticate the model, operator, runtime, or honesty of execution. The verifier recomputes deterministic cases and scoring, but it cannot establish semantic truth or independently observe an external model.
+
 ## Reporting
+
 Do not publish secrets or exploit details in public issues. Use GitHub private vulnerability reporting when enabled.
 
-## Future execution backends
-External agent execution is out of scope until a threat model, sandbox design, resource limits, permission model, and adversarial tests are reviewed. Containers alone are not treated as a complete isolation boundary.
+## Future execution backend
+
+A hardened sandbox is a separate security project requiring a threat model, isolation architecture, resource limits, network egress policy, permission model, escape testing, and independent review. Containers alone are not treated as a complete isolation boundary.

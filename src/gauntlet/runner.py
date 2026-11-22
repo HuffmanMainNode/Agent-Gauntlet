@@ -91,10 +91,49 @@ def verify(bundle):
         from .adversarial import evaluate_case
 
         rows = json.loads((bundle / "results.json").read_text(encoding="utf-8"))
+        if not isinstance(rows, list) or not rows:
+            raise ValueError("Adversarial results must be a non-empty list")
+        declared_seeds = evidence.get("seeds")
+        if (not isinstance(declared_seeds, list) or
+                any(type(seed) is not int for seed in declared_seeds) or
+                len(set(declared_seeds)) != len(declared_seeds) or
+                len(declared_seeds) > 100):
+            raise ValueError("Invalid seed inventory in evidence manifest")
+        if len(rows) != len(declared_seeds):
+            raise ValueError("Result count does not match declared seed inventory")
+        if [row.get("case", {}).get("seed") for row in rows] != declared_seeds:
+            raise ValueError("Result seeds or ordering do not match evidence manifest")
+        suite = evidence.get("suite")
+        if not isinstance(suite, str) or not suite:
+            raise ValueError("Missing suite identifier")
+        from .adversarial import build_case
         for row in rows:
-            recomputed = evaluate_case(row["case"], row["response"])
+            if not isinstance(row, dict) or not {"case", "response", "execution", "evaluation"} <= set(row):
+                raise ValueError("Malformed adversarial result row")
+            case = row["case"]
+            if not isinstance(case, dict) or type(case.get("seed")) is not int:
+                raise ValueError("Malformed challenge case or seed")
+            if case != build_case(suite, case["seed"]):
+                raise ValueError(f"Challenge case does not match deterministic generator: {case.get('case_id')}")
+            if not isinstance(row["response"], dict):
+                raise ValueError("Adapter response must be a JSON object")
+            execution = row["execution"]
+            if not isinstance(execution, dict) or execution.get("status") not in {"completed", "failed"}:
+                raise ValueError("Invalid execution status")
+            if execution["status"] == "completed":
+                if execution.get("error_type") is not None or execution.get("error") is not None:
+                    raise ValueError("Completed execution cannot carry failure diagnostics")
+                recomputed = evaluate_case(case, row["response"])
+            else:
+                if not isinstance(execution.get("error_type"), str) or not execution["error_type"]:
+                    raise ValueError("Failed execution must include an error type")
+                if not isinstance(execution.get("error"), str):
+                    raise ValueError("Failed execution must include a diagnostic")
+                recomputed = evaluate_case(case, row["response"])
+                recomputed["behavior_pass"] = False
+                recomputed["score"] = 0.0
             if recomputed != row["evaluation"]:
-                raise ValueError(f"Adversarial evaluation mismatch: {row['case'].get('case_id')}")
+                raise ValueError(f"Adversarial evaluation mismatch: {case.get('case_id')}")
         return {
             "valid": True,
             "run_id": evidence["run_id"],
