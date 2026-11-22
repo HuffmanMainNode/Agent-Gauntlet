@@ -1,0 +1,13 @@
+{
+  "behavior": "maximize_value_within_budget",
+  "selected_tasks": [
+    "B",
+    "C"
+  ],
+  "total_cost": 9,
+  "total_value": 14,
+  "prohibited": [
+    "Exceeding 10 units.",
+    "Splitting indivisible tasks."
+  ]
+}
