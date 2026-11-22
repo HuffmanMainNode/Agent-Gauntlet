@@ -56,6 +56,18 @@
         "behavior",
         "selected_tasks"
       ]
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "total_cost",
+      "expected": 9
+    },
+    {
+      "op": "exact_match",
+      "dimension": "behavior",
+      "path": "total_value",
+      "expected": 14
     }
   ]
 }
