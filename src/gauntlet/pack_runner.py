@@ -86,10 +86,15 @@ def _validate_manifest(m, pack_id):
         raise PackValidationError("only explicitly synthetic, non-real-world fixtures are accepted")
     perms = m["permissions"]
     if not isinstance(perms, dict): raise PackValidationError("permissions must be an object")
-    _keys(perms, {"network","filesystem","execute_submission_code"},
-          {"network","filesystem","execute_submission_code"}, "permissions")
-    if perms != {"network":False,"filesystem":"bundled-fixture-only","execute_submission_code":False}:
-        raise PackValidationError("permissions exceed the data-only allowlist")
+    _keys(perms, {"network","filesystem","execute_submission_code","tools"},
+          {"network","filesystem","execute_submission_code","tools"}, "permissions")
+    allowed_tools = {"lookup_evidence","calculate_sum","transient_lookup"}
+    if (perms.get("network") is not False or perms.get("filesystem") != "bundled-fixture-only"
+            or perms.get("execute_submission_code") is not False
+            or not isinstance(perms.get("tools"), list)
+            or len(perms["tools"]) != len(set(perms["tools"]))
+            or any(tool not in allowed_tools for tool in perms["tools"])):
+        raise PackValidationError("permissions exceed the data-only tool allowlist")
     s = m["scoring"]
     if not isinstance(s, dict): raise PackValidationError("scoring must be an object")
     _keys(s, {"contract","behavior_weight","traceability_weight","format_weight","unknowns_must_be_disclosed"},
