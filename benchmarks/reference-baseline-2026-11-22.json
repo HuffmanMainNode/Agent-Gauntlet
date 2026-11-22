@@ -65,65 +65,134 @@
     "expires_at": "2027-02-20T18:10:33Z",
     "download_url": "https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45053558139"
   },
+  "verification": {
+    "artifact_digest_recomputed": true,
+    "baseline_index_digest_recomputed": true,
+    "evidence_bundle_count": 14,
+    "all_evidence_bundles_verified_by_ci": true
+  },
   "profiles": [
     {
       "profile": "demo-good",
-      "suites": [
-        "hallucination",
-        "contradiction",
-        "injection",
-        "variable",
-        "ambiguity",
-        "stateful"
-      ],
       "cases_per_suite": 25,
-      "behavior_pass_rate": 1,
-      "mean_score_per_suite": 100,
-      "execution_failures": 0
+      "suite_results": [
+        {
+          "suite": "hallucination",
+          "cases": 25,
+          "behavior_pass_rate": 1,
+          "mean_score": 100,
+          "execution_failures": 0
+        },
+        {
+          "suite": "contradiction",
+          "cases": 25,
+          "behavior_pass_rate": 1,
+          "mean_score": 100,
+          "execution_failures": 0
+        },
+        {
+          "suite": "injection",
+          "cases": 25,
+          "behavior_pass_rate": 1,
+          "mean_score": 100,
+          "execution_failures": 0
+        },
+        {
+          "suite": "variable",
+          "cases": 25,
+          "behavior_pass_rate": 1,
+          "mean_score": 100,
+          "execution_failures": 0
+        },
+        {
+          "suite": "ambiguity",
+          "cases": 25,
+          "behavior_pass_rate": 1,
+          "mean_score": 100,
+          "execution_failures": 0
+        },
+        {
+          "suite": "stateful",
+          "cases": 25,
+          "behavior_pass_rate": 1,
+          "mean_score": 100,
+          "execution_failures": 0
+        }
+      ]
     },
     {
       "profile": "demo-bad",
-      "suites": [
-        "hallucination",
-        "contradiction",
-        "injection",
-        "variable",
-        "ambiguity"
-      ],
       "cases_per_suite": 25,
-      "behavior_pass_rate": 0,
-      "mean_score_per_suite": 0,
-      "execution_failures": 0
-    },
-    {
-      "profile": "demo-bad",
-      "suites": [
-        "stateful"
-      ],
-      "cases_per_suite": 25,
-      "behavior_pass_rate": 0,
-      "mean_score_per_suite": 50,
-      "execution_failures": 0
+      "suite_results": [
+        {
+          "suite": "hallucination",
+          "cases": 25,
+          "behavior_pass_rate": 0,
+          "mean_score": 0,
+          "execution_failures": 0
+        },
+        {
+          "suite": "contradiction",
+          "cases": 25,
+          "behavior_pass_rate": 0,
+          "mean_score": 0,
+          "execution_failures": 0
+        },
+        {
+          "suite": "injection",
+          "cases": 25,
+          "behavior_pass_rate": 0,
+          "mean_score": 0,
+          "execution_failures": 0
+        },
+        {
+          "suite": "variable",
+          "cases": 25,
+          "behavior_pass_rate": 0,
+          "mean_score": 0,
+          "execution_failures": 0
+        },
+        {
+          "suite": "ambiguity",
+          "cases": 25,
+          "behavior_pass_rate": 0,
+          "mean_score": 0,
+          "execution_failures": 0
+        },
+        {
+          "suite": "stateful",
+          "cases": 25,
+          "behavior_pass_rate": 0,
+          "mean_score": 50,
+          "execution_failures": 0
+        }
+      ]
     },
     {
       "profile": "demo-vulnerable-injection",
-      "suites": [
-        "injection"
-      ],
       "cases_per_suite": 25,
-      "behavior_pass_rate": 0,
-      "mean_score_per_suite": 50,
-      "execution_failures": 0
+      "suite_results": [
+        {
+          "suite": "injection",
+          "cases": 25,
+          "behavior_pass_rate": 0,
+          "mean_score": 50,
+          "execution_failures": 0
+        }
+      ]
     },
     {
       "profile": "demo-stale-state",
-      "suites": [
-        "stateful"
-      ],
       "cases_per_suite": 25,
-      "behavior_pass_rate": 0,
-      "mean_score_per_suite": 50,
-      "execution_failures": 0
+      "suite_results": [
+        {
+          "suite": "stateful",
+          "cases": 25,
+          "behavior_pass_rate": 0,
+          "mean_score": 50,
+          "execution_failures": 0
+        }
+      ]
     }
   ],
   "interpretation": [
