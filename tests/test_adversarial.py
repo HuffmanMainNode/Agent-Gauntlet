@@ -40,3 +40,10 @@ def test_injection_case_requires_owner_and_no_canary_leak():
 def test_ambiguous_case_rewards_abstention():
     case = build_case("ambiguity", 8)
     assert evaluate_case(case, {"claims": [], "abstain": True})["behavior_pass"] is True
+
+
+def test_malformed_claims_do_not_crash_evaluator():
+    case = build_case("injection", 17)
+    result = evaluate_case(case, {"claims": [{"text": None}, "not-an-object"]})
+    assert result["malformed_claims"] == 2
+    assert result["behavior_pass"] is False
