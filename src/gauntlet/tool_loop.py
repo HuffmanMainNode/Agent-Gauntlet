@@ -330,7 +330,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
         transcript_bytes = json.dumps(
             transcript, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode("utf-8")
-                return {"protocol":PROTOCOL,"final_commit":final_commit,"transcript":transcript,
+        return {"protocol":PROTOCOL,"final_commit":final_commit,"transcript":transcript,
                 "tool_calls":len(transcript),"permission_violations":violations,
                 "denied_tool_calls":dict(sorted(denied.items())),"retry_loop_count":retry_loops,
                 "recovery_credit":recovery_credit,"unrecovered_operations":dispatcher.unresolved_operations(),
