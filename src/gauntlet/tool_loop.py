@@ -192,6 +192,8 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                             buffer = bytearray(remainder)
                             if len(raw) > MAX_FRAME_BYTES:
                                 raise ToolLoopProtocolError("protocol frame exceeds maximum size")
+                            if buffer:
+                                raise ToolLoopProtocolError("agent emitted multiple frames before receiving the pending tool result")
                             frame = json.loads(raw.decode("utf-8"))
                             if not isinstance(frame, dict) or frame.get("protocol") != PROTOCOL:
                                 raise ToolLoopProtocolError("invalid protocol frame")
@@ -222,7 +224,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                                     try:
                                         selector.modify(process.stdin, selectors.EVENT_WRITE, "stdin")
                                     except KeyError:
-                                        pass
+                                        selector.register(process.stdin, selectors.EVENT_WRITE, "stdin")
                             elif frame.get("event") == "FINAL_COMMIT":
                                 if not isinstance(frame.get("payload"), dict):
                                     raise ToolLoopProtocolError("FINAL_COMMIT payload must be an object")
