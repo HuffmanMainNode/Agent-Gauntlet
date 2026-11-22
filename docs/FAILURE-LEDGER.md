@@ -131,3 +131,8 @@ Never mark a failure closed merely because a later unrelated CI run is green.
 - **Verification:** The final implementation head passed the complete Python 3.11/3.12/3.13 matrix, deterministic reference baseline, and artifact upload in [workflow 45056445878](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45056445878). PR merge remains pending.
 - **Merge:** PR [#22](https://github.com/HuffmanMainNode/Agent-Gauntlet/pull/22) merged as `50b7d072968bb9aac4fba0c0572e389ab7dd4e50`. The post-merge CI run is tracked separately.
 - **Disposition:** Closed by the merged stateful dispatcher, trace/live/CLI regression coverage, and passing final PR matrix plus leaderboard gate. The initial failed workflow remains preserved as development history.
+
+
+## Historical CI run inventory
+
+The [22 November 2026 CI failure index](CI-FAILURE-INDEX-2026-11-22.json) inventories all **152 failed workflow runs** found across the 485 workflow runs reviewed for this audit. These are workflow-run counts, not unique defect counts. Many are repeated attempts against successive commits. The index groups every failed run ID by development branch and records representative failure categories; the individual root causes, corrections, and closure evidence are maintained in this ledger. The index deliberately preserves failed runs rather than rewriting history.
