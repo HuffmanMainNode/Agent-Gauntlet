@@ -65,7 +65,7 @@ Use one protocol validator for live sessions and offline traces. Require exact i
 
 ### Phase C: make challenge packs executable end-to-end
 
-**Initial local execution/evidence pipeline implemented and merged in PR #26.** The \\`pack-run\\` and \\`verify-pack-run\\` commands provide per-pack, per-seed records. Current seed semantics are deliberately limited: each seed is injected into a fixed synthetic fixture, while fixture payload content remains unchanged. The next Phase C increment must add genuine deterministic fixture generation from seed values and a documented adapter identity/reproduction contract.
+**Initial local execution/evidence pipeline implemented and merged in PR #26.** The `pack-run` and `verify-pack-run` commands provide per-pack, per-seed records. Current seed semantics are deliberately limited: each seed is injected into a fixed synthetic fixture, while fixture payload content remains unchanged. The next Phase C increment must add genuine deterministic fixture generation from seed values and a documented adapter identity/reproduction contract.
 
 The implemented runner records:
 - immutable challenge and fixture hashes;
