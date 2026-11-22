@@ -151,8 +151,13 @@ def scorecard_claims_digest(scorecard: dict[str, Any]) -> str:
     """Digest every public scorecard claim except mutable signature/self-hash metadata."""
     if not isinstance(scorecard, dict):
         raise AttestationError("scorecard must be an object")
-    excluded = {"provenance", "attestation", "scorecard_sha256"}
+    excluded = {"attestation", "scorecard_sha256"}
     claims = {key: value for key, value in scorecard.items() if key not in excluded}
+    provenance = claims.get("provenance")
+    if isinstance(provenance, dict):
+        provenance = dict(provenance)
+        provenance.pop("scorecard_claims_sha256", None)
+        claims["provenance"] = provenance
     return digest(canonical_bytes(claims))
 
 
