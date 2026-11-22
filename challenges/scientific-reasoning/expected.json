@@ -1,0 +1,19 @@
+{
+  "behavior": "limit_causal_claim",
+  "supported": [
+    "Observed groups had different reported improvement proportions."
+  ],
+  "not_established": [
+    "That intervention X caused the difference.",
+    "Statistical significance or generalizability."
+  ],
+  "missing": [
+    "Sample size",
+    "Confounder handling",
+    "Uncertainty interval",
+    "Study protocol"
+  ],
+  "prohibited": [
+    "Claiming causation or statistical significance from the supplied summary."
+  ]
+}
