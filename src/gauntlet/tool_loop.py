@@ -77,6 +77,10 @@ def evaluate_trace(frames: list[dict], fixture: dict, allowed_tools: set[str]) -
                 raise ToolLoopProtocolError("tool must be a non-empty string")
             call_ids.add(call_id)
             result = dispatch_tool(tool, frame.get("arguments", {}), fixture, allowed_tools)
+            if result["status"] == 503:
+                service_unavailable[tool] += 1
+                if service_unavailable[tool] > 1:
+                    retry_loops += 1
             if result["status"] == 403:
                 violations += 1
                 denied[tool] += 1
@@ -159,6 +163,7 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
         call_ids = set()
         denied = Counter()
         violations = retry_loops = recovery_credit = 0
+        service_unavailable = Counter()
         expected_turn = 1
         final_commit = None
         deadline = time.monotonic() + policy.wall_time_ms / 1000
@@ -211,6 +216,9 @@ def run_tool_loop(command: list[str], task: dict, fixture: dict, allowed_tools: 
                                     raise ToolLoopProtocolError("tool must be a non-empty string")
                                 call_ids.add(call_id)
                                 result = dispatch_tool(tool, frame.get("arguments", {}), fixture, allowed_tools)
+                                if result["status"] == 503:
+                                    service_unavailable[tool] += 1
+                                    if service_unavailable[tool] > 1: retry_loops += 1
                                 if result["status"] == 403:
                                     violations += 1
                                     denied[tool] += 1
