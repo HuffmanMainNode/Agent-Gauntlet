@@ -16,6 +16,10 @@ The adversarial runner invokes an operator-configured argument vector using Pyth
 
 The local command adapter is implemented. The experimental persistent-process JSONL session adapter is also implemented for sequential, non-interactive multi-turn tests. Neither path is secure isolation: the process retains the OS permissions and network access of its execution identity.
 
+### Deterministic reference matrix
+
+Four bundled synthetic reference programs run across 14 profile/suite combinations using a fixed seed inventory. The standard CI baseline uses 25 seeds per run (350 cases), verifies each evidence bundle, and uploads the baseline index plus bundles as a workflow artifact. These controls calibrate evaluator sensitivity; they are not external model results.
+
 ## Evidence and trust boundaries
 - Challenge payloads are parsed as data, not imported as Python.
 - SHA-256 inventories detect payload changes relative to the manifest.
