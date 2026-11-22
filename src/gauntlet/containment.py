@@ -380,7 +380,7 @@ def run_contained(argv: list[str], stdin_bytes: bytes, policy: ContainmentPolicy
             returncode = terminate_process_group(process)
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(
-            json.dumps(report.to_dict(), sort_keys=True, indent=2) + "\\n", encoding="utf-8"
+            json.dumps(report.to_dict(), sort_keys=True, indent=2) + "\n", encoding="utf-8"
         )
 
     return ExecutionResult(
