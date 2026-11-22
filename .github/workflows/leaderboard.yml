@@ -1,0 +1,43 @@
+name: Leaderboard Submission Gate
+
+on:
+  pull_request:
+    paths:
+      - "leaderboard/submissions/**"
+      - "leaderboard/allowed_signers"
+      - "leaderboard/registered_signers.json"
+      - "src/gauntlet/leaderboard.py"
+      - "src/gauntlet/attestation.py"
+      - "src/gauntlet/gri.py"
+      - "schemas/scorecard.schema.json"
+      - ".github/workflows/leaderboard.yml"
+  push:
+    paths:
+      - "leaderboard/submissions/**"
+      - "leaderboard/allowed_signers"
+      - "leaderboard/registered_signers.json"
+      - "src/gauntlet/leaderboard.py"
+      - "src/gauntlet/attestation.py"
+      - "src/gauntlet/gri.py"
+      - ".github/workflows/leaderboard.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-submissions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Verify registered signers, signatures, GRI coverage, and seed counts
+        run: |
+          python -m gauntlet verify-leaderboard \
+            --directory leaderboard/submissions \
+            --allowed-signers leaderboard/allowed_signers \
+            --registered-signers leaderboard/registered_signers.json \
+            --minimum-seeds 25
