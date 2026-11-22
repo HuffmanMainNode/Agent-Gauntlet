@@ -100,3 +100,12 @@ Never mark a failure closed merely because a later unrelated CI run is green.
 - **Correction:** Make the tool-loop probe namespace capability in best-effort mode and use the same fail-closed strict-mode requirement. Report requested/effective mode, namespace activation, host OS, and the explicit non-sandbox filesystem boundary. Require exact integer turn indices in the live process path.
 - **Regression coverage:** Add tests for best-effort namespace probing, effective capability reporting, strict-mode rejection when network isolation is disabled, and boolean turn-index rejection in both live and offline protocol paths.
 - **Disposition:** Fixed-pending-verification until the full Python 3.11/3.12/3.13 matrix passes.
+
+
+## Entry FG-2026-11-22-009: containment import formatting regression during PR #20
+
+- **Observed:** The first PR #20 CI attempt failed test collection on Python 3.11, 3.12, and 3.13 with a syntax error in the new multi-line containment import.
+- **Root cause:** The initial source edit wrote the two literal characters `\\n` into the Python import statement instead of inserting a physical newline.
+- **Correction:** Replaced the literal escape with a real line break before the next CI attempt.
+- **Evidence:** Failed workflow [45055729009](https://github.com/HuffmanMainNode/Agent-Gauntlet/actions/runs/45055729009). The corrected source is on the PR branch; final disposition awaits the complete matrix.
+- **Disposition:** Fixed-pending-verification. The historical failed run remains visible.
