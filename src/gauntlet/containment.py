@@ -267,6 +267,21 @@ def terminate_process_group(process: subprocess.Popen, timeout: float = 2.0) -> 
         return process.wait(timeout=timeout)
 
 
+
+def finish_process_group(process: subprocess.Popen, grace_seconds: float = 0.25) -> int:
+    """Close the request stream, allow a clean leader exit, then reap its group."""
+    if process.stdin is not None and not process.stdin.closed:
+        process.stdin.close()
+    try:
+        returncode = process.wait(timeout=grace_seconds)
+    except subprocess.TimeoutExpired:
+        _kill_process_group(process)
+        returncode = process.wait()
+    # The leader may have exited while descendants kept its session alive.
+    _kill_process_group(process)
+    return returncode
+
+
 def _capture_process(process: subprocess.Popen, stdin_bytes: bytes,
                      policy: ContainmentPolicy, deadline: float) -> tuple[bytes, bytes, bool, bool]:
     assert process.stdout is not None and process.stderr is not None and process.stdin is not None
