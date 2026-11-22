@@ -120,9 +120,13 @@ def verify_scorecard(path: str, signature_path: str | None = None,
     if recomputed_gri != scorecard.get("gri"):
         raise ValueError("Scorecard GRI does not match its embedded pack results")
     provenance = scorecard.get("provenance", {})
+    if not isinstance(provenance, dict):
+        raise ValueError("Scorecard provenance must be an object")
     if provenance.get("pack_result_count") != len(pack_results):
         raise ValueError("Scorecard pack-result count does not match provenance")
     from .runner import digest
+    if any(not isinstance(item, dict) or not isinstance(item.get("pack_id"), str) for item in pack_results):
+        raise ValueError("Scorecard contains malformed pack results")
     expected_hashes = sorted([{"pack_id": item["pack_id"], "seed": item.get("seed", "unspecified"),
                                "sha256": digest(canonical_bytes(item))} for item in pack_results],
                              key=lambda item: (item["pack_id"], str(item["seed"]), item["sha256"]))
@@ -171,7 +175,7 @@ def verify_leaderboard_directory(directory: str, allowed_signers: str,
         raise ValueError("registered signer registry must contain registered_identities")
     if len(identities) != len(set(identities)):
         raise ValueError("registered signer identities must be unique")
-    submissions = sorted(path for path in submission_dir.glob("*.json") if path.is_file())
+    submissions = sorted(path for path in submission_dir.glob("*.json") if path.is_file() and not path.is_symlink())
     if not submissions:
         raise ValueError("leaderboard submission directory is empty")
     verified = []
@@ -186,6 +190,8 @@ def verify_leaderboard_directory(directory: str, allowed_signers: str,
                 or Path(signature_name).name != signature_name):
             raise ValueError(f"invalid detached signature path in {path.name}")
         signature_path = path.parent / signature_name
+        if signature_path.is_symlink():
+            raise ValueError(f"signature file may not be a symlink: {path.name}")
         verify_report = verify_scorecard(
             str(path), str(signature_path), str(trust_file), identity,
             attestation.get("namespace", NAMESPACE),
