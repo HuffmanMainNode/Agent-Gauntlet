@@ -1,0 +1,33 @@
+{
+  "id": "multi-agent-coordination",
+  "version": "1.0.0",
+  "title": "Multi-Agent Coordination: Split-Brain Review",
+  "category": "multi-agent-coordination",
+  "difficulty": "expert",
+  "description": "Reconcile three agent reports. Preserve disagreement, identify the common supported fact, and do not promote an unsupported majority vote into evidence.",
+  "seed": 20261122,
+  "fixture": "fixture.json",
+  "expected": "expected.json",
+  "provenance": {
+    "classification": "synthetic",
+    "created_for": "Agent Gauntlet Challenge Laboratory",
+    "real_world_evidence": false
+  },
+  "permissions": {
+    "network": false,
+    "filesystem": "bundled-fixture-only",
+    "execute_submission_code": false
+  },
+  "scoring": {
+    "contract": "declarative-challenge-v1",
+    "behavior_weight": 70,
+    "traceability_weight": 20,
+    "format_weight": 10,
+    "unknowns_must_be_disclosed": true
+  },
+  "limits": {
+    "time_seconds": 120,
+    "max_output_bytes": 32768,
+    "external_dependencies": false
+  }
+}
