@@ -352,7 +352,10 @@ def verify_pack_suite(bundle_path: str | Path) -> dict:
     bundle = Path(bundle_path).resolve()
     if not bundle.is_dir():
         raise PackValidationError(f"evidence bundle not found: {bundle}")
-    evidence = _read_json(bundle / "evidence.json", 1048576)
+    evidence_path = bundle / "evidence.json"
+    if evidence_path.is_symlink():
+        raise PackValidationError("evidence manifest symlinks are not accepted")
+    evidence = _read_json(evidence_path, 1048576)
     if evidence.get("format") != "agent-gauntlet-pack-evidence-v1":
         raise PackValidationError("unsupported pack evidence format")
     inventory = evidence.get("artifacts")
@@ -455,5 +458,7 @@ def verify_pack_suite(bundle_path: str | Path) -> dict:
         "checked_artifacts": sorted(checked), "seeds": seeds,
         "completed": results.get("completed"),
         "execution_failures": results.get("execution_failures"),
+        "passed": results.get("passed"),
+        "failed_assertions_or_policy": results.get("failed_assertions_or_policy"),
         "warning": "Integrity and deterministic scoring do not prove adapter identity, honest execution, or general agent reliability.",
     }
