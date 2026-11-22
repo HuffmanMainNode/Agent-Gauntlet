@@ -21,7 +21,6 @@ def run_suite(suite: str, command: list[str], seeds: list[int], output_root: Pat
         raise ValueError("A suite run is limited to 100 seeds")
     run_id = uuid.uuid4().hex
     bundle = Path(output_root) / run_id
-    bundle.mkdir(parents=True, exist_ok=False)
     started = datetime.now(timezone.utc)
     rows = []
     for seed in seeds:
@@ -30,6 +29,7 @@ def run_suite(suite: str, command: list[str], seeds: list[int], output_root: Pat
         response = invoke_command(command, task, timeout_seconds)
         rows.append({"case": case, "response": response, "evaluation": evaluate_case(case, response)})
     finished = datetime.now(timezone.utc)
+    bundle.mkdir(parents=True, exist_ok=False)
     payloads = {
         "results.json": canonical_bytes(rows),
         "summary.json": canonical_bytes({
