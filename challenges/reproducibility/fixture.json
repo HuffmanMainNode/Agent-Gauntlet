@@ -1,0 +1,28 @@
+{
+  "challenge_id": "reproducibility",
+  "seed": 20261122,
+  "classification": "synthetic",
+  "task": "Independently derive the canonical finding from identical input evidence. Report environmental inputs that would prevent exact reproduction.",
+  "evidence": [
+    {
+      "id": "D-001",
+      "source": "fixture",
+      "text": "Input value A = 17."
+    },
+    {
+      "id": "D-002",
+      "source": "fixture",
+      "text": "Input value B = 25."
+    },
+    {
+      "id": "D-003",
+      "source": "fixture",
+      "text": "Operation = addition."
+    }
+  ],
+  "environment": {
+    "network": "disabled",
+    "filesystem": "fixture-only",
+    "submission_execution": "disabled"
+  }
+}
