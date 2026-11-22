@@ -1,0 +1,84 @@
+import json
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+
+from gauntlet.attestation import (
+    AttestationError, build_provenance, sign_scorecard, verify_scorecard_signature,
+)
+from gauntlet.adversarial_runner import run_suite
+from gauntlet.leaderboard import build_scorecard, verify_scorecard, write_scorecard
+
+ROOT=Path(__file__).parents[1]
+
+def make_bundle(tmp_path):
+    import sys
+    code="import json,sys; json.load(sys.stdin); print(json.dumps({'claims': [], 'abstain': True}))"
+    return run_suite("hallucination",[sys.executable,"-c",code],[17,18],tmp_path/"runs",
+                    agent_name="Attested Agent",model_id="example/model-v1",
+                    adapter_version="adapter-1")
+
+def test_provenance_root_is_deterministic_and_commits_to_source_and_packs(tmp_path):
+    bundle=make_bundle(tmp_path)
+    first=build_provenance([str(bundle)],repo_root=ROOT,repo_commit="abc123")
+    second=build_provenance([str(bundle)],repo_root=ROOT,repo_commit="abc123")
+    assert first==second
+    assert first["bundle_root_sha256"] and len(first["bundle_root_sha256"])==64
+    assert first["challenge_pack_count"]==10
+    changed_commit=build_provenance([str(bundle)],repo_root=ROOT,repo_commit="def456")
+    assert changed_commit["bundle_root_sha256"]!=first["bundle_root_sha256"]
+    assert changed_commit["challenge_pack_hashes"]==first["challenge_pack_hashes"]
+
+def test_bundle_content_changes_provenance_root(tmp_path):
+    bundle=make_bundle(tmp_path)
+    before=build_provenance([str(bundle)],repo_root=ROOT,repo_commit="abc123")
+    with (bundle/"summary.json").open("ab") as handle:
+        handle.write(b"tamper")
+    after=build_provenance([str(bundle)],repo_root=ROOT,repo_commit="abc123")
+    assert before["bundle_root_sha256"]!=after["bundle_root_sha256"]
+
+def test_symlink_in_bundle_is_rejected(tmp_path):
+    bundle=make_bundle(tmp_path)
+    target=tmp_path/"outside.txt";target.write_text("outside")
+    link=bundle/"outside-link"
+    try:
+        link.symlink_to(target)
+    except OSError:
+        pytest.skip("symlink creation unavailable")
+    with pytest.raises(AttestationError,match="symlinks"):
+        build_provenance([str(bundle)],repo_root=ROOT,repo_commit="abc123")
+
+@pytest.mark.skipif(shutil.which("ssh-keygen") is None,reason="OpenSSH ssh-keygen unavailable")
+def test_openssh_sign_and_verify_scorecard_root(tmp_path):
+    bundle=make_bundle(tmp_path)
+    card=build_scorecard([str(bundle)],"Attested Agent","example/model-v1","adapter-1")
+    key=tmp_path/"signing_key"
+    subprocess.run(["ssh-keygen","-q","-t","ed25519","-N","","-f",str(key)],check=True)
+    pub=(tmp_path/"signing_key.pub").read_text().split()
+    identity="ci-agent@example.invalid"
+    namespace="agent-gauntlet"
+    allowed=tmp_path/"allowed_signers"
+    allowed.write_text(f'{identity} namespaces="{namespace}" {pub[0]} {pub[1]}\n')
+    signature=sign_scorecard(card,key,identity,tmp_path/"scorecard.json.sig",namespace)
+    scorecard_path=write_scorecard(card,str(tmp_path/"scorecard.json"))
+    report=verify_scorecard(str(scorecard_path),str(signature),str(allowed),identity,namespace)
+    assert report["valid"] is True
+    assert report["attestation"]=="verified"
+    assert report["signature"]["signed_object"]=="bundle_root_sha256"
+
+@pytest.mark.skipif(shutil.which("ssh-keygen") is None,reason="OpenSSH ssh-keygen unavailable")
+def test_tampered_provenance_fails_signature_verification(tmp_path):
+    bundle=make_bundle(tmp_path)
+    card=build_scorecard([str(bundle)],"Attested Agent","example/model-v1","adapter-1")
+    key=tmp_path/"signing_key"
+    subprocess.run(["ssh-keygen","-q","-t","ed25519","-N","","-f",str(key)],check=True)
+    pub=(tmp_path/"signing_key.pub").read_text().split()
+    identity="ci-agent@example.invalid";namespace="agent-gauntlet"
+    allowed=tmp_path/"allowed_signers"
+    allowed.write_text(f'{identity} namespaces="{namespace}" {pub[0]} {pub[1]}\n')
+    signature=sign_scorecard(card,key,identity,tmp_path/"scorecard.json.sig",namespace)
+    card["provenance"]["repo_commit"]="forged-commit"
+    with pytest.raises(AttestationError,match="verification failed"):
+        verify_scorecard_signature(card,signature,allowed,identity,namespace)
