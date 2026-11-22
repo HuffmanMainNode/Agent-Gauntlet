@@ -20,6 +20,10 @@ def run_suite(suite: str, command: list[str], seeds: list[int], output_root: Pat
         raise ValueError("Agent name, model ID, and adapter version are required for a benchmark run")
     if not seeds:
         raise ValueError("At least one seed is required")
+    if any(type(seed) is not int for seed in seeds):
+        raise ValueError("Every seed must be an integer")
+    if len(set(seeds)) != len(seeds):
+        raise ValueError("Seeds must be unique within a run")
     if len(seeds) > 100:
         raise ValueError("A suite run is limited to 100 seeds")
     run_id = uuid.uuid4().hex
@@ -29,8 +33,20 @@ def run_suite(suite: str, command: list[str], seeds: list[int], output_root: Pat
     for seed in seeds:
         case = build_case(suite, seed)
         task = {key: value for key, value in case.items() if key != "trap"}
-        response = invoke_command(command, task, timeout_seconds)
-        rows.append({"case": case, "response": response, "evaluation": evaluate_case(case, response)})
+        try:
+            response = invoke_command(command, task, timeout_seconds)
+            execution = {"status": "completed", "error_type": None, "error": None}
+        except (OSError, ValueError, TimeoutError) as exc:
+            # A failed adapter attempt is evidence, not a reason to discard the entire run.
+            response = {"claims": [], "abstain": False, "adapter_error": type(exc).__name__}
+            execution = {"status": "failed", "error_type": type(exc).__name__,
+                         "error": str(exc)[:1000]}
+        evaluation = evaluate_case(case, response)
+        if execution["status"] == "failed":
+            evaluation["behavior_pass"] = False
+            evaluation["score"] = 0.0
+        rows.append({"case": case, "response": response, "execution": execution,
+                     "evaluation": evaluation})
     finished = datetime.now(timezone.utc)
     bundle.mkdir(parents=True, exist_ok=False)
     payloads = {
@@ -40,6 +56,7 @@ def run_suite(suite: str, command: list[str], seeds: list[int], output_root: Pat
             "mean_score": round(sum(row["evaluation"]["score"] for row in rows) / len(rows), 2),
             "behavior_passes": sum(bool(row["evaluation"]["behavior_pass"]) for row in rows),
             "unsupported_claims": sum(row["evaluation"]["unsupported_claims"] for row in rows),
+            "execution_failures": sum(row["execution"]["status"] == "failed" for row in rows),
             "abstentions": sum(bool(row["evaluation"]["abstained"]) for row in rows),
         }),
         "environment.json": canonical_bytes({"python": platform.python_version(), "platform": platform.platform()}),
