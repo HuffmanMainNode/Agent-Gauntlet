@@ -11,6 +11,7 @@ from .tool_loop import run_tool_loop
 from .containment import ContainmentPolicy
 from .attestation import sign_scorecard
 from .reference_runner import run_reference_matrix, verify_reference_baseline
+from .gri import build_gri, DEFAULT_DOMAINS
 
 
 def main():
@@ -49,6 +50,9 @@ def main():
     reference.add_argument("--output", default="artifacts/reference")
     verify_reference = sub.add_parser("verify-reference", help="verify a reference baseline and all linked evidence bundles")
     verify_reference.add_argument("--baseline", required=True)
+    gri_parser = sub.add_parser("gri", help="calculate a coverage-aware cross-domain GRI from pack result files")
+    gri_parser.add_argument("--result", action="append", default=[], help="pack result JSON; repeat for each domain")
+    gri_parser.add_argument("--output", default="artifacts/gri.json")
     card = sub.add_parser("scorecard", help="build a public scorecard from verified adversarial evidence bundles")
     card.add_argument("--bundle", action="append", required=True, help="evidence bundle directory; repeat for each suite")
     card.add_argument("--agent-name", required=True)
@@ -56,6 +60,7 @@ def main():
     card.add_argument("--adapter-version", required=True)
     card.add_argument("--operator", default="unspecified")
     card.add_argument("--output", default="scorecard.json")
+    card.add_argument("--pack-result", action="append", default=[], help="evaluated challenge pack result JSON; repeat for each domain")
     card.add_argument("--repo-commit", help="explicit source repository commit to include in provenance")
     card.add_argument("--signing-key", help="OpenSSH private key used to sign the canonical bundle root")
     card.add_argument("--signer-identity", help="identity registered in the verifier allowed_signers file")
@@ -122,6 +127,7 @@ def main():
                                    ContainmentPolicy(mode="best-effort", wall_time_ms=args.timeout * 1000,
                                                      max_stdout_bytes=challenge.manifest["limits"]["max_output_bytes"]))
             evaluation = evaluate_response(challenge, result["final_commit"])
+            evaluation["permission_violation"] = bool(result["permission_violations"])
             if result["permission_violations"]:
                 evaluation["passed"] = False
                 evaluation["score"] = 0.0
@@ -143,9 +149,18 @@ def main():
                               "seed_start": args.seed_start}, indent=2))
         elif args.command == "verify-reference":
             print(json.dumps(verify_reference_baseline(args.baseline), indent=2))
+        elif args.command == "gri":
+            results = [json.loads(Path(raw).read_text(encoding="utf-8")) for raw in args.result]
+            report = build_gri(results, DEFAULT_DOMAINS)
+            output = Path(args.output)
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(json.dumps(report, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            print(json.dumps(report, indent=2))
+            if not report["complete"]:
+                return 1
         elif args.command == "scorecard":
             scorecard = build_scorecard(args.bundle, args.agent_name, args.model_id,
-                                        args.adapter_version, args.operator, repo_commit=args.repo_commit)
+                                        args.adapter_version, args.operator, repo_commit=args.repo_commit,\n                                        pack_result_paths=args.pack_result)
             signature = None
             if args.signing_key:
                 if not args.signer_identity:
