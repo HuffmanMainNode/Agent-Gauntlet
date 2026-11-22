@@ -119,9 +119,10 @@ def build_provenance(bundle_paths: list[str], repo_root: str | Path | None = Non
         if not isinstance(result, dict) or not isinstance(result.get("pack_id"), str):
             raise AttestationError(f"additional provenance file lacks a pack_id: {candidate}")
         pack_id = result["pack_id"]
-        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", pack_id):
-            raise AttestationError("additional provenance file has an invalid pack_id")
-        seed = result.get("seed", "unspecified")
+        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", pack_id) or pack_id not in packs:
+            raise AttestationError("additional provenance file has an unknown or invalid pack_id")
+        raw_seed = str(result.get("seed", "unspecified"))
+        seed = raw_seed if re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", raw_seed) and ".." not in raw_seed else "seed-" + digest(raw_seed.encode())[:16]
         entries.append({"path": f"pack-results/{pack_id}/seed-{seed}/{digest(raw_bytes)}.json",
                         "sha256": digest(raw_bytes)})
         pack_result_count += 1
